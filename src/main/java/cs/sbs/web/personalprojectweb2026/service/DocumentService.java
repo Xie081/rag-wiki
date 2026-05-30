@@ -1,6 +1,7 @@
 package cs.sbs.web.personalprojectweb2026.service;
 
 import cs.sbs.web.personalprojectweb2026.model.entity.Document;
+import cs.sbs.web.personalprojectweb2026.repository.DocumentChunkRepository;
 import cs.sbs.web.personalprojectweb2026.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +20,9 @@ import java.util.UUID;
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final DocumentChunkRepository chunkRepository;
     private final KnowledgeBaseService kbService;
+    private final DocumentProcessingService processingService;
 
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
@@ -75,11 +78,18 @@ public class DocumentService {
                 .userId(userId)
                 .build();
 
-        return documentRepository.save(doc);
+        doc = documentRepository.save(doc);
+
+        // Trigger async processing (parse → chunk → embed → store)
+        processingService.processDocument(doc.getId());
+
+        return doc;
     }
 
     public void delete(Long id, Long userId) {
         Document doc = getById(id, userId);
+        // Delete chunks
+        chunkRepository.deleteByDocumentId(id);
         // Delete file from disk
         try {
             Files.deleteIfExists(Path.of(doc.getStoragePath()));

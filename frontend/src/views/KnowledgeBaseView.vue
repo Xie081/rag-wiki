@@ -59,12 +59,22 @@ async function handleDeleteKB() {
 
 function getStatusText(status: string): string {
   const map: Record<string, string> = {
-    UPLOADED: '已上传',
+    UPLOADED: '待处理',
     PROCESSING: '处理中',
     COMPLETED: '已完成',
     FAILED: '失败'
   }
   return map[status] || status
+}
+
+function getStatusClass(status: string): string {
+  const map: Record<string, string> = {
+    UPLOADED: 'status-pending',
+    PROCESSING: 'status-processing',
+    COMPLETED: 'status-done',
+    FAILED: 'status-fail'
+  }
+  return map[status] || ''
 }
 
 onMounted(load)
@@ -111,7 +121,11 @@ onMounted(load)
           <span class="col-type">
             <span class="badge" :class="doc.fileType.toLowerCase()">{{ doc.fileType }}</span>
           </span>
-          <span class="col-status">{{ getStatusText(doc.status) }}</span>
+          <span class="col-status">
+            <span class="status-badge" :class="getStatusClass(doc.status)">
+              {{ getStatusText(doc.status) }}
+            </span>
+          </span>
           <span class="col-date">{{ new Date(doc.createdAt).toLocaleString() }}</span>
           <span class="col-action">
             <button class="btn-sm" @click="handleDeleteDoc(doc.id)">删除</button>
@@ -213,4 +227,16 @@ main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
   color: #999;
 }
 .empty p { font-size: 1.1rem; margin-bottom: 16px; }
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.status-pending { background: #fef3c7; color: #d97706; }
+.status-processing { background: #dbeafe; color: #2563eb; }
+.status-done { background: #d1fae5; color: #059669; }
+.status-fail { background: #fee2e2; color: #dc2626; }
 </style>
