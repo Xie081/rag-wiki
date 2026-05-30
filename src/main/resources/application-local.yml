@@ -1,0 +1,45 @@
+# Local development configuration
+# Uses PostgreSQL + DeepSeek API
+
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rag_wiki
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: ${POSTGRES_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # DeepSeek API (OpenAI-compatible)
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:your-deepseek-api-key}
+      base-url: https://api.deepseek.com
+      chat:
+        enabled: true
+        options:
+          model: deepseek-chat
+          temperature: 0.7
+      embedding:
+        enabled: true
+        options:
+          model: deepseek-embedding
+
+# Logging
+logging:
+  level:
+    cs.sbs.web: DEBUG
+    org.springframework.ai: DEBUG
+    org.springframework.security: DEBUG
