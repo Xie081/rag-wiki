@@ -45,3 +45,5 @@ uploads/
 ### Environment ###
 .env
 .env.local
+application-local.yml
+### Local config (contains secrets) ###

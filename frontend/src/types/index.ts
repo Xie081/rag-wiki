@@ -51,7 +51,7 @@ export interface ChatMessage {
 
 export interface CitationSource {
   documentTitle: string
-  chunkContent: string
+  snippet: string
 }
 
 export interface ChatRequest {

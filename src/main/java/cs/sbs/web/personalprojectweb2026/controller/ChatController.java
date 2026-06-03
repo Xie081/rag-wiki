@@ -3,33 +3,33 @@ package cs.sbs.web.personalprojectweb2026.controller;
 import cs.sbs.web.personalprojectweb2026.config.SecurityUtil;
 import cs.sbs.web.personalprojectweb2026.service.RagService;
 import cs.sbs.web.personalprojectweb2026.service.RagService.RagResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.StreamingChatModel;
-import org.springframework.ai.chat.prompt.Prompt;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.StreamingChatModel;
+import org.springframework.ai.chat.prompt.Prompt;
 
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
+@Slf4j
 public class ChatController {
 
     private final RagService ragService;
-    private final ChatModel chatModel;
     private final StreamingChatModel streamingChatModel;
     private final SecurityUtil securityUtil;
+    private final Executor taskExecutor;
+    private final ObjectMapper objectMapper;
 
     /**
      * Non-streaming RAG Q&A.
@@ -48,6 +48,7 @@ public class ChatController {
 
     /**
      * SSE streaming RAG Q&A.
+     * Sends JSON-enveloped events: {"type":"token","content":"..."} and {"type":"sources","data":[...]}
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestBody Map<String, Object> body) {
@@ -56,50 +57,64 @@ public class ChatController {
 
         SseEmitter emitter = new SseEmitter(300000L); // 5 min timeout
 
-        // Run in a separate thread
-        new Thread(() -> {
+        taskExecutor.execute(() -> {
             try {
-                // Build the rendered prompt (with retrieved context)
-                var rendered = ragService.buildRenderedPrompt(kbId, question);
-                List<Message> messages = new ArrayList<>();
-                messages.add(new SystemMessage(rendered.systemPrompt()));
-                messages.add(new UserMessage(rendered.userPrompt()));
+                // Single retrieval: get both messages and sources in one call
+                var renderedWithSources = ragService.buildRenderedPrompt(kbId, question);
 
                 // Stream the response
-                Flux<ChatResponse> flux = streamingChatModel.stream(new Prompt(messages));
-                StringBuilder fullAnswer = new StringBuilder();
+                Flux<ChatResponse> flux = streamingChatModel.stream(
+                        new Prompt(renderedWithSources.messages()));
 
                 flux.doOnNext(chunk -> {
                     String content = chunk.getResult().getOutput().getText();
                     if (content != null) {
-                        fullAnswer.append(content);
                         try {
+                            String json = objectMapper.writeValueAsString(
+                                    Map.of("type", "token", "content", content));
                             emitter.send(SseEmitter.event()
                                     .name("message")
-                                    .data(content));
+                                    .data(json));
                         } catch (Exception e) {
-                            // client disconnected
+                            // client disconnected, stop the flux
                         }
                     }
                 }).doOnComplete(() -> {
                     try {
-                        // Get sources from the same retrieval
-                        RagResult result = ragService.ask(kbId, question);
+                        // Send sources (from the single retrieval, no double LLM call)
+                        String sourcesJson = objectMapper.writeValueAsString(
+                                Map.of("type", "sources", "data", renderedWithSources.sources()));
                         emitter.send(SseEmitter.event()
                                 .name("sources")
-                                .data(result.sources()));
+                                .data(sourcesJson));
                         emitter.complete();
                     } catch (Exception e) {
                         emitter.completeWithError(e);
                     }
                 }).doOnError(e -> {
+                    log.error("Streaming error for question: {}", question, e);
+                    try {
+                        String errorJson = objectMapper.writeValueAsString(
+                                Map.of("type", "error", "message", e.getMessage()));
+                        emitter.send(SseEmitter.event()
+                                .name("error")
+                                .data(errorJson));
+                    } catch (Exception ignored) {}
                     emitter.completeWithError(e);
                 }).subscribe();
 
             } catch (Exception e) {
+                log.error("Failed to build prompt for question: {}", question, e);
                 emitter.completeWithError(e);
             }
-        }).start();
+        });
+
+        // Clean up on timeout or client disconnect
+        emitter.onTimeout(() -> {
+            log.debug("SSE emitter timed out");
+            emitter.complete();
+        });
+        emitter.onError(emitter::completeWithError);
 
         return emitter;
     }

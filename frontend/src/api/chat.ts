@@ -56,24 +56,17 @@ export function streamQuestion(
             if (!data) continue
 
             try {
-              const parsed = JSON.parse('[' + data.replace(/}{/g, '},{') + ']')
-              // Actually, SSE data comes line by line, try parsing as-is
-              try {
-                const obj = JSON.parse(data)
-                if (Array.isArray(obj)) {
-                  onSources(obj)
-                } else {
-                  onToken(data)
-                }
-              } catch {
-                // Raw string token
-                onToken(data)
+              const event = JSON.parse(data)
+              if (event.type === 'token') {
+                onToken(event.content)
+              } else if (event.type === 'sources') {
+                onSources(event.data)
+              } else if (event.type === 'error') {
+                onError(new Event(event.message || 'stream error'))
               }
             } catch {
-              onToken(data)
+              // ignore malformed JSON lines
             }
-          } else if (line.startsWith('event:sources')) {
-            // next data line will be sources
           }
         }
 

@@ -1,0 +1,24 @@
+# Local development configuration
+# Copy this file to application-local.yml and fill in your values
+# application-local.yml is gitignored — never commit it
+
+# Spring profile: local (uses this file)
+spring:
+  profiles:
+    active: local
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rag_wiki
+    username: postgres
+    password: your_postgres_password_here
+
+  ai:
+    openai:
+      api-key: your_deepseek_api_key_here
+      # base-url defaults to https://api.deepseek.com
+      # chat.model defaults to deepseek-chat
+      # embedding.model defaults to deepseek-embedding
+
+app:
+  jwt:
+    secret: generate-a-random-secret-key-at-least-256-bits

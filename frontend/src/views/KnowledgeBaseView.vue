@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getKnowledgeBase, deleteKnowledgeBase } from '@/api/knowledgeBase'
 import { getDocuments, uploadDocument, deleteDocument } from '@/api/document'
 import { useChatStore } from '@/stores/chat'
+import { useToast } from '@/composables/useToast'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
 import SearchBar from '@/components/knowledge/SearchBar.vue'
 import type { KnowledgeBase, Document } from '@/types'
@@ -12,6 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const kbId = Number(route.params.id)
 const chatStore = useChatStore()
+const toast = useToast()
 
 const kb = ref<KnowledgeBase | null>(null)
 const documents = ref<Document[]>([])
@@ -42,11 +44,15 @@ async function handleUpload(e: Event) {
     await uploadDocument(kbId, file)
     await load()
   } catch (err: any) {
-    alert(err.response?.data?.message || '上传失败')
+    toast.error(err.response?.data?.message || '上传失败')
   } finally {
     uploading.value = false
     target.value = ''
   }
+}
+
+function goToDoc(id: number) {
+  router.push(`/document/${id}`)
 }
 
 async function handleDeleteDoc(id: number) {
@@ -125,7 +131,7 @@ onUnmounted(() => chatStore.clearMessages())
           <span class="col-action">操作</span>
         </div>
         <div v-for="doc in documents" :key="doc.id" class="doc-row">
-          <span class="col-name" :title="doc.originalName">{{ doc.originalName }}</span>
+          <span class="col-name doc-link" :title="doc.originalName" @click="goToDoc(doc.id)">{{ doc.originalName }}</span>
           <span class="col-type">
             <span class="badge" :class="doc.fileType.toLowerCase()">{{ doc.fileType }}</span>
           </span>
@@ -236,6 +242,8 @@ main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
 .doc-row:last-child { border-bottom: none; }
 .doc-row:hover { background: #fafbff; }
 .col-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-link { color: #4f46e5; cursor: pointer; }
+.doc-link:hover { text-decoration: underline; }
 .badge {
   display: inline-block;
   padding: 2px 8px;

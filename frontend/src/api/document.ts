@@ -20,3 +20,13 @@ export function uploadDocument(kbId: number, file: File) {
 export function deleteDocument(id: number) {
   return api.delete(`/documents/${id}`)
 }
+
+export interface DocumentDetailResponse {
+  document: Document
+  chunks: Array<{ chunkIndex: number; content: string }>
+  chunkCount: number
+}
+
+export function getDocumentDetail(id: number) {
+  return api.get<DocumentDetailResponse>(`/documents/${id}/detail`)
+}

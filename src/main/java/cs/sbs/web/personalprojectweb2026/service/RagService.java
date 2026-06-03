@@ -96,15 +96,17 @@ public class RagService {
     }
 
     /**
-     * Build rendered prompt for the given question & knowledge base (for streaming reuse).
+     * Build rendered prompt + sources for the given question & knowledge base.
+     * Returns fully-assembled messages for LLM call and citation sources (for streaming reuse).
      */
-    public PromptTemplateService.RenderedPrompt buildRenderedPrompt(Long kbId, String question) {
+    public RenderedPromptWithSources buildRenderedPrompt(Long kbId, String question) {
         float[] questionEmbedding = embeddingService.embed(question);
         String vectorStr = embeddingService.toPgVectorString(questionEmbedding);
 
         List<DocumentChunk> chunks = chunkRepository.findSimilarChunks(vectorStr, kbId, TOP_K);
 
         StringBuilder context = new StringBuilder();
+        List<CitationSource> sources = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             DocumentChunk chunk = chunks.get(i);
             Document doc = documentRepository.findById(chunk.getDocumentId()).orElse(null);
@@ -113,17 +115,33 @@ public class RagService {
                    .append("文档：《").append(docName).append("》\n")
                    .append(chunk.getContent())
                    .append("\n\n");
+
+            // Build citation sources inline (no double retrieval)
+            sources.add(new CitationSource(
+                    docName,
+                    chunk.getContent().length() > 200
+                            ? chunk.getContent().substring(0, 200) + "..."
+                            : chunk.getContent()
+            ));
         }
 
         if (chunks.isEmpty()) {
             context.append("（知识库中暂无相关内容）");
         }
 
-        return promptTemplateService.render("rag-qa", Map.of(
+        var rendered = promptTemplateService.render("rag-qa", Map.of(
                 "context", context.toString(),
                 "question", question
         ));
+
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(rendered.systemPrompt()));
+        messages.add(new UserMessage(rendered.userPrompt()));
+
+        return new RenderedPromptWithSources(messages, sources);
     }
+
+    public record RenderedPromptWithSources(List<Message> messages, List<CitationSource> sources) {}
 
     public record RagResult(String answer, List<CitationSource> sources) {}
 

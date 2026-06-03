@@ -1,0 +1,41 @@
+# Docker environment overrides
+# Used when running via docker-compose (SPRING_PROFILES_ACTIVE=docker)
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/rag_wiki}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: https://api.deepseek.com
+      chat:
+        enabled: true
+        options:
+          model: deepseek-chat
+      embedding:
+        enabled: true
+        options:
+          model: deepseek-embedding
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-random-secret-at-least-256-bits-long}
+    expiration-ms: 86400000
+  upload:
+    dir: ${UPLOAD_DIR:/app/uploads}
+
+logging:
+  level:
+    cs.sbs.web: INFO

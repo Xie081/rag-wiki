@@ -1,6 +1,7 @@
 package cs.sbs.web.personalprojectweb2026.service;
 
 import cs.sbs.web.personalprojectweb2026.model.entity.Document;
+import cs.sbs.web.personalprojectweb2026.model.entity.DocumentChunk;
 import cs.sbs.web.personalprojectweb2026.repository.DocumentChunkRepository;
 import cs.sbs.web.personalprojectweb2026.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +13,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +88,29 @@ public class DocumentService {
         processingService.processDocument(doc.getId());
 
         return doc;
+    }
+
+    /**
+     * Get document detail with chunks and summary.
+     */
+    public Map<String, Object> getDetailWithChunks(Long id, Long userId) {
+        Document doc = getById(id, userId);
+        List<DocumentChunk> chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(id);
+
+        List<Map<String, Object>> chunkList = chunks.stream()
+                .map(chunk -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("chunkIndex", chunk.getChunkIndex());
+                    item.put("content", chunk.getContent());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("document", doc);
+        result.put("chunks", chunkList);
+        result.put("chunkCount", chunks.size());
+        return result;
     }
 
     public void delete(Long id, Long userId) {

@@ -30,6 +30,12 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.getById(id, userId));
     }
 
+    @GetMapping("/documents/{id}/detail")
+    public ResponseEntity<?> getDetail(@PathVariable Long id) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        return ResponseEntity.ok(documentService.getDetailWithChunks(id, userId));
+    }
+
     @PostMapping("/knowledge-bases/{kbId}/documents")
     public ResponseEntity<?> upload(@PathVariable Long kbId, @RequestParam("file") MultipartFile file) {
         Long userId = securityUtil.getCurrentUser().getId();
