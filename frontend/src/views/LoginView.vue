@@ -17,7 +17,13 @@ async function handleLogin() {
     await authStore.login(username.value, password.value)
     router.push('/')
   } catch (e: any) {
-    error.value = e.response?.data?.message || '登录失败，请重试'
+    if (e.code === 'ERR_NETWORK' || e.message?.includes('Network Error')) {
+      error.value = '无法连接服务器，请确认后端已启动'
+    } else if (e.response?.data?.message) {
+      error.value = e.response.data.message
+    } else {
+      error.value = `登录失败: ${e.message || '未知错误'}`
+    }
   } finally {
     loading.value = false
   }
