@@ -16,23 +16,10 @@ const detail = ref<DocumentDetailResponse | null>(null)
 const doc = ref<Document | null>(null)
 
 function getStatusText(status: string): string {
-  const map: Record<string, string> = {
-    UPLOADED: '待处理',
-    PROCESSING: '处理中',
-    COMPLETED: '已完成',
-    FAILED: '失败'
-  }
-  return map[status] || status
+  return { UPLOADED:'待处理', PROCESSING:'处理中', COMPLETED:'已完成', FAILED:'失败' }[status] || status
 }
-
 function getStatusClass(status: string): string {
-  const map: Record<string, string> = {
-    UPLOADED: 'status-pending',
-    PROCESSING: 'status-processing',
-    COMPLETED: 'status-done',
-    FAILED: 'status-fail'
-  }
-  return map[status] || ''
+  return { UPLOADED:'badge-pending', PROCESSING:'badge-processing', COMPLETED:'badge-done', FAILED:'badge-fail' }[status] || ''
 }
 
 function formatFileSize(bytes: number | null): string {
@@ -51,52 +38,60 @@ onMounted(async () => {
   } catch (err: any) {
     toast.error(err.response?.data?.message || '加载文档失败')
     router.back()
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 })
 </script>
 
 <template>
   <div class="doc-page">
-    <header>
-      <button class="btn-back" @click="router.back()">← 返回</button>
-      <div v-if="doc">
-        <h1>{{ doc.originalName }}</h1>
-        <div class="meta-row">
-          <span class="badge" :class="doc.fileType.toLowerCase()">{{ doc.fileType }}</span>
-          <span class="status-badge" :class="getStatusClass(doc.status)">
-            {{ getStatusText(doc.status) }}
-          </span>
-          <span class="meta-text">{{ formatFileSize((doc as any).fileSize) }}</span>
-          <span class="meta-text">{{ new Date(doc.createdAt).toLocaleString() }}</span>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <button class="btn-back" @click="router.back()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          返回
+        </button>
+        <div v-if="doc" class="doc-meta">
+          <h1>{{ doc.originalName }}</h1>
+          <div class="meta-tags">
+            <span class="type-badge" :class="doc.fileType.toLowerCase()">{{ doc.fileType }}</span>
+            <span class="status-badge" :class="getStatusClass(doc.status)">{{ getStatusText(doc.status) }}</span>
+            <span class="meta-info">{{ formatFileSize((doc as any).fileSize) }}</span>
+            <span class="meta-info">{{ new Date(doc.createdAt).toLocaleString('zh-CN') }}</span>
+          </div>
         </div>
       </div>
     </header>
 
-    <main>
-      <div v-if="loading" class="empty">加载中...</div>
+    <main class="doc-main">
+      <div v-if="loading" class="state-box"><div class="loader" /><p>加载中...</p></div>
 
       <template v-else-if="doc && detail">
-        <!-- AI Summary -->
-        <section class="card summary-card">
-          <h2>📝 AI 摘要</h2>
-          <p v-if="doc.summary">{{ doc.summary }}</p>
+        <!-- Summary -->
+        <section class="card">
+          <div class="card-head">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <h2>AI 摘要</h2>
+          </div>
+          <p v-if="doc.summary" class="summary-text">{{ doc.summary }}</p>
           <p v-else-if="doc.status === 'PROCESSING'" class="placeholder">摘要生成中...</p>
           <p v-else-if="doc.status === 'FAILED'" class="placeholder">摘要生成失败</p>
           <p v-else class="placeholder">文档处理完成后将自动生成摘要</p>
         </section>
 
         <!-- Chunks -->
-        <section class="card chunks-card">
-          <h2>📄 文档分块 ({{ detail.chunkCount }} 块)</h2>
+        <section class="card">
+          <div class="card-head">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <h2>文档分块</h2>
+            <span class="count-badge">{{ detail.chunkCount }}</span>
+          </div>
           <div v-if="detail.chunks.length === 0" class="placeholder">
             文档尚未完成分块处理，请等待处理完成。
           </div>
           <div v-else class="chunk-list">
             <div v-for="(chunk, i) in detail.chunks" :key="i" class="chunk-item">
-              <div class="chunk-index">#{{ chunk.chunkIndex + 1 }}</div>
-              <div class="chunk-content">{{ chunk.content }}</div>
+              <div class="chunk-num">{{ chunk.chunkIndex + 1 }}</div>
+              <div class="chunk-text">{{ chunk.content }}</div>
             </div>
           </div>
         </section>
@@ -106,96 +101,116 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.doc-page { min-height: 100vh; background: #f0f2f5; }
-header {
-  padding: 20px 32px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+.doc-page { min-height: 100vh; background: var(--bg); }
+
+/* ── Topbar ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-light);
 }
-header h1 { font-size: 1.3rem; margin: 8px 0 4px; word-break: break-all; }
-.meta-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-.meta-text { color: #888; font-size: 0.85rem; }
+.topbar-inner { max-width: 900px; margin: 0 auto; padding: 20px 32px; }
+.topbar-inner h1 { font-size: var(--text-xl); margin: 12px 0 8px; word-break: break-all; }
 
 .btn-back {
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #666;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: var(--text-sm); font-family: var(--font); cursor: pointer;
+  transition: all 0.2s;
 }
+.btn-back:hover { background: var(--surface-alt); color: var(--text); }
 
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
+.meta-tags { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.type-badge {
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs); font-weight: 600;
+  text-transform: uppercase;
 }
-.badge.pdf { background: #fee2e2; color: #dc2626; }
-.badge.markdown { background: #dbeafe; color: #2563eb; }
-
+.type-badge.pdf { background: var(--rose-light); color: var(--dusty-rose); }
+.type-badge.markdown { background: var(--blue-light); color: var(--dusty-blue); }
 .status-badge {
-  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: var(--text-xs); font-weight: 600;
+}
+.badge-pending { background: #fef7e0; color: #9d8100; }
+.badge-processing { background: var(--blue-light); color: var(--dusty-blue); }
+.badge-done { background: var(--sage-light); color: var(--sage); }
+.badge-fail { background: var(--rose-light); color: var(--error); }
+.meta-info { color: var(--text-muted); font-size: var(--text-sm); }
+
+/* ── Main ── */
+.doc-main { max-width: 900px; margin: 0 auto; padding: 32px; }
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  padding: 28px;
+  margin-bottom: 24px;
+  animation: fadeIn 0.5s var(--ease);
+}
+.card-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 18px;
+}
+.card-head h2 { font-size: var(--text-base); font-weight: 600; }
+.card-head svg { color: var(--sage); }
+.count-badge {
   padding: 2px 10px;
   border-radius: 10px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: var(--sage-light);
+  color: var(--sage);
+  font-size: var(--text-xs); font-weight: 600;
 }
-.status-pending { background: #fef3c7; color: #d97706; }
-.status-processing { background: #dbeafe; color: #2563eb; }
-.status-done { background: #d1fae5; color: #059669; }
-.status-fail { background: #fee2e2; color: #dc2626; }
 
-main { padding: 24px 32px; max-width: 900px; margin: 0 auto; }
+.summary-text { font-size: var(--text-base); line-height: var(--leading); color: var(--text); }
 
-.card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  padding: 24px;
-  margin-bottom: 20px;
-}
-.card h2 { margin: 0 0 12px; font-size: 1.1rem; }
+.placeholder { color: var(--text-muted); font-style: italic; font-size: var(--text-sm); }
 
-.summary-card p { line-height: 1.7; color: #444; font-size: 0.95rem; margin: 0; }
-
-.placeholder { color: #999; font-style: italic; }
-
+/* ── Chunks ── */
 .chunk-list { display: flex; flex-direction: column; gap: 16px; }
 .chunk-item {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
+  display: flex; gap: 16px;
+  padding: 18px;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  transition: border-color 0.2s;
 }
-.chunk-index {
+.chunk-item:hover { border-color: var(--border); }
+.chunk-num {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  background: #4f46e5;
-  color: #fff;
+  width: 32px; height: 32px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  background: var(--sage);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--text-xs); font-weight: 700;
 }
-.chunk-content {
+.chunk-text {
   flex: 1;
-  font-size: 0.9rem;
-  line-height: 1.7;
-  color: #444;
+  font-size: var(--text-sm);
+  line-height: var(--leading);
+  color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.empty {
-  text-align: center;
-  padding: 80px 20px;
-  color: #999;
+/* ── States ── */
+.state-box { text-align: center; padding: 80px 20px; }
+.loader {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--sage);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

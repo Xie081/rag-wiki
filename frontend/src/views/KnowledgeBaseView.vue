@@ -6,7 +6,6 @@ import { getDocuments, uploadDocument, deleteDocument } from '@/api/document'
 import { useChatStore } from '@/stores/chat'
 import { useToast } from '@/composables/useToast'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
-import SearchBar from '@/components/knowledge/SearchBar.vue'
 import type { KnowledgeBase, Document } from '@/types'
 
 const route = useRoute()
@@ -37,76 +36,48 @@ async function load() {
     documents.value = docRes.data.data
     totalPages.value = docRes.data.totalPages
     totalElements.value = docRes.data.totalElements
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 async function loadMore() {
   if (loadingMore.value || currentPage.value >= totalPages.value - 1) return
   loadingMore.value = true
   try {
-    const nextPage = currentPage.value + 1
-    const { data } = await getDocuments(kbId, nextPage, PAGE_SIZE)
+    const next = currentPage.value + 1
+    const { data } = await getDocuments(kbId, next, PAGE_SIZE)
     documents.value.push(...data.data)
-    currentPage.value = nextPage
+    currentPage.value = next
     totalPages.value = data.totalPages
-  } finally {
-    loadingMore.value = false
-  }
+  } finally { loadingMore.value = false }
 }
 
 async function handleUpload(e: Event) {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
-
   uploading.value = true
-  try {
-    await uploadDocument(kbId, file)
-    await load()
-  } catch (err: any) {
-    toast.error(err.response?.data?.message || '上传失败')
-  } finally {
-    uploading.value = false
-    target.value = ''
-  }
+  try { await uploadDocument(kbId, file); await load() }
+  catch (err: any) { toast.error(err.response?.data?.message || '上传失败') }
+  finally { uploading.value = false; target.value = '' }
 }
 
-function goToDoc(id: number) {
-  router.push(`/document/${id}`)
-}
+function goToDoc(id: number) { router.push(`/document/${id}`) }
 
 async function handleDeleteDoc(id: number) {
   if (!confirm('确定删除该文档？')) return
-  await deleteDocument(id)
-  await load()
+  await deleteDocument(id); await load()
 }
 
 async function handleDeleteKB() {
   if (!confirm('确定删除整个知识库？')) return
-  await deleteKnowledgeBase(kbId)
-  router.push('/')
+  await deleteKnowledgeBase(kbId); router.push('/')
 }
 
 function getStatusText(status: string): string {
-  const map: Record<string, string> = {
-    UPLOADED: '待处理',
-    PROCESSING: '处理中',
-    COMPLETED: '已完成',
-    FAILED: '失败'
-  }
-  return map[status] || status
+  return { UPLOADED:'待处理', PROCESSING:'处理中', COMPLETED:'已完成', FAILED:'失败' }[status] || status
 }
-
 function getStatusClass(status: string): string {
-  const map: Record<string, string> = {
-    UPLOADED: 'status-pending',
-    PROCESSING: 'status-processing',
-    COMPLETED: 'status-done',
-    FAILED: 'status-fail'
-  }
-  return map[status] || ''
+  return { UPLOADED:'badge-pending', PROCESSING:'badge-processing', COMPLETED:'badge-done', FAILED:'badge-fail' }[status] || ''
 }
 
 onMounted(load)
@@ -115,72 +86,74 @@ onUnmounted(() => chatStore.clearMessages())
 
 <template>
   <div class="kb-page">
-    <header>
-      <button class="btn-back" @click="router.push('/')">← 返回</button>
-      <div v-if="kb">
-        <h1>{{ kb.name }}</h1>
-        <p v-if="kb.description">{{ kb.description }}</p>
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="btn-back" @click="router.push('/')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div v-if="kb">
+          <h1>{{ kb.name }}</h1>
+          <p v-if="kb.description" class="kb-desc">{{ kb.description }}</p>
+        </div>
       </div>
-      <div class="header-actions">
-        <SearchBar :knowledgeBaseId="kbId" />
-        <label class="btn-primary" :class="{ disabled: uploading }">
-          {{ uploading ? '上传中...' : '+ 上传文档' }}
+      <div class="topbar-right">
+        <label class="btn-upload" :class="{ disabled: uploading }">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          {{ uploading ? '上传中...' : '上传文档' }}
           <input type="file" accept=".pdf,.md,.markdown" hidden @change="handleUpload" :disabled="uploading" />
         </label>
-        <button class="btn-danger" @click="handleDeleteKB">删除知识库</button>
+        <button class="btn-ghost-danger" @click="handleDeleteKB">删除知识库</button>
       </div>
     </header>
 
-    <main>
-      <div class="content-layout">
+    <main class="kb-main">
+      <div class="kb-layout">
+        <!-- Documents section -->
         <div class="doc-section">
-          <div v-if="loading" class="empty">加载中...</div>
+          <div class="section-header">
+            <h2>文档</h2>
+            <span v-if="totalElements" class="count-badge">{{ totalElements }}</span>
+          </div>
 
-          <div v-else-if="documents.length === 0" class="empty">
-            <p>📄 还没有文档</p>
-            <label class="btn-primary">
+          <div v-if="loading" class="state-box"><div class="loader" /><p>加载中...</p></div>
+
+          <div v-else-if="documents.length === 0" class="state-box">
+            <div class="empty-icon">📄</div>
+            <h3>还没有文档</h3>
+            <p>上传 PDF 或 Markdown 文档开始构建知识库</p>
+            <label class="btn-upload">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               上传第一个文档
               <input type="file" accept=".pdf,.md,.markdown" hidden @change="handleUpload" />
             </label>
           </div>
 
-          <div v-else class="doc-table">
-        <div class="doc-header">
-          <span class="col-name">文档名称</span>
-          <span class="col-type">类型</span>
-          <span class="col-status">状态</span>
-          <span class="col-date">上传时间</span>
-          <span class="col-action">操作</span>
-        </div>
-        <div v-for="doc in documents" :key="doc.id" class="doc-row">
-          <span class="col-name doc-link" :title="doc.originalName" @click="goToDoc(doc.id)">{{ doc.originalName }}</span>
-          <span class="col-type">
-            <span class="badge" :class="doc.fileType.toLowerCase()">{{ doc.fileType }}</span>
-          </span>
-          <span class="col-status">
-            <span class="status-badge" :class="getStatusClass(doc.status)">
-              {{ getStatusText(doc.status) }}
-            </span>
-          </span>
-          <span class="col-date">{{ new Date(doc.createdAt).toLocaleString() }}</span>
-          <span class="col-action">
-            <button class="btn-sm" @click="handleDeleteDoc(doc.id)">删除</button>
-          </span>
-        </div>
-        <div v-if="totalElements > 0" class="doc-footer">
-          <span class="doc-count">共 {{ totalElements }} 个文档</span>
-          <button
-            v-if="currentPage < totalPages - 1"
-            class="btn-load-more"
-            :disabled="loadingMore"
-            @click="loadMore"
-          >
-            {{ loadingMore ? '加载中...' : '加载更多' }}
-          </button>
-        </div>
-      </div>
+          <div v-else class="doc-list">
+            <div class="doc-list-header">
+              <span class="col-name">文档名称</span>
+              <span class="col-type">类型</span>
+              <span class="col-status">状态</span>
+              <span class="col-date">上传时间</span>
+              <span class="col-action"></span>
+            </div>
+            <div v-for="doc in documents" :key="doc.id" class="doc-row">
+              <span class="col-name doc-name" :title="doc.originalName" @click="goToDoc(doc.id)">{{ doc.originalName }}</span>
+              <span class="col-type"><span class="type-badge" :class="doc.fileType.toLowerCase()">{{ doc.fileType }}</span></span>
+              <span class="col-status"><span class="status-badge" :class="getStatusClass(doc.status)">{{ getStatusText(doc.status) }}</span></span>
+              <span class="col-date">{{ new Date(doc.createdAt).toLocaleString('zh-CN') }}</span>
+              <span class="col-action"><button class="btn-row-del" @click="handleDeleteDoc(doc.id)">删除</button></span>
+            </div>
+            <div v-if="totalElements" class="doc-footer">
+              <span class="count-text">共 {{ totalElements }} 个文档</span>
+              <button v-if="currentPage < totalPages - 1" class="btn-more" :disabled="loadingMore" @click="loadMore">
+                {{ loadingMore ? '加载中...' : '加载更多' }}
+              </button>
+            </div>
+          </div>
         </div>
 
+        <!-- Chat section -->
         <div class="chat-section">
           <ChatPanel :knowledgeBaseId="kbId" />
         </div>
@@ -190,139 +163,184 @@ onUnmounted(() => chatStore.clearMessages())
 </template>
 
 <style scoped>
-.kb-page { min-height: 100vh; background: #f0f2f5; }
-header {
-  padding: 20px 32px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+.kb-page { min-height: 100vh; background: var(--bg); }
+
+/* ── Topbar ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-light);
+  flex-wrap: wrap; gap: 12px;
 }
-header h1 { font-size: 1.4rem; margin: 4px 0; }
-header p { color: #888; font-size: 0.9rem; margin: 0; }
-.header-actions { display: flex; gap: 12px; margin-top: 12px; }
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-left h1 { font-size: var(--text-lg); margin: 0; }
+.kb-desc { font-size: var(--text-sm); color: var(--text-muted); margin-top: 2px; }
+.topbar-right { display: flex; gap: 10px; align-items: center; }
 
 .btn-back {
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  width: 36px; height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
   cursor: pointer;
-  color: #666;
-  margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
 }
-.btn-primary {
-  display: inline-block;
-  padding: 8px 20px;
-  background: #4f46e5;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.btn-primary.disabled { opacity: 0.5; pointer-events: none; }
-.btn-danger {
-  padding: 8px 16px;
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.btn-sm {
-  padding: 4px 12px;
-  background: transparent;
-  color: #ef4444;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
+.btn-back:hover { background: var(--surface-alt); color: var(--text); }
 
-main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
-.content-layout {
+.btn-upload {
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--sage), #7a8f74);
+  color: #fff;
+  font-size: var(--text-sm); font-weight: 600; font-family: var(--font);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.btn-upload:hover:not(.disabled) { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.btn-upload.disabled { opacity: 0.5; pointer-events: none; }
+
+.btn-ghost-danger {
+  padding: 8px 16px;
+  border: 1.5px solid #edd5ce;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--dusty-rose);
+  font-size: var(--text-sm); font-family: var(--font); cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ghost-danger:hover { background: var(--rose-light); }
+
+/* ── Main ── */
+.kb-main { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+.kb-layout {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr 440px;
   gap: 24px;
   align-items: start;
 }
-@media (max-width: 1100px) {
-  .content-layout { grid-template-columns: 1fr; }
-}
-.doc-section { min-width: 0; }
-.chat-section { position: sticky; top: 24px; }
+@media (max-width: 1100px) { .kb-layout { grid-template-columns: 1fr; } }
+.chat-section { position: sticky; top: 24px; max-height: calc(100vh - 120px); }
+.chat-section > * { max-height: inherit; min-height: 500px; }
 
-.doc-table {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  overflow: hidden;
+/* ── Section ── */
+.section-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px;
 }
-.doc-header, .doc-row {
-  display: grid;
-  grid-template-columns: 2fr 80px 80px 1fr 80px;
-  gap: 16px;
-  padding: 14px 20px;
-  align-items: center;
-  font-size: 0.9rem;
-}
-.doc-header {
-  background: #f9fafb;
-  color: #888;
-  font-weight: 600;
-  border-bottom: 1px solid #eee;
-}
-.doc-row { border-bottom: 1px solid #f3f4f6; }
-.doc-row:last-child { border-bottom: none; }
-.doc-row:hover { background: #fafbff; }
-.doc-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
-  background: #f9fafb;
-  border-top: 1px solid #eee;
-}
-.doc-count { color: #888; font-size: 0.8rem; }
-.btn-load-more {
-  padding: 6px 16px;
-  background: #f3f4f6;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #555;
-  font-size: 0.85rem;
-}
-.btn-load-more:hover { background: #e5e7eb; }
-.btn-load-more:disabled { opacity: 0.5; cursor: not-allowed; }
-.col-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.doc-link { color: #4f46e5; cursor: pointer; }
-.doc-link:hover { text-decoration: underline; }
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-.badge.pdf { background: #fee2e2; color: #dc2626; }
-.badge.markdown { background: #dbeafe; color: #2563eb; }
-
-.empty {
-  text-align: center;
-  padding: 80px 20px;
-  color: #999;
-}
-.empty p { font-size: 1.1rem; margin-bottom: 16px; }
-
-.status-badge {
-  display: inline-block;
+.section-header h2 { font-size: var(--text-lg); }
+.count-badge {
   padding: 2px 10px;
   border-radius: 10px;
-  font-size: 0.75rem;
+  background: var(--sage-light);
+  color: var(--sage);
+  font-size: var(--text-xs); font-weight: 600;
+}
+
+/* ── States ── */
+.state-box {
+  text-align: center; padding: 80px 20px;
+  animation: fadeInUp 0.5s var(--ease);
+}
+.state-box h3 { margin-bottom: 6px; }
+.state-box p { margin-bottom: 20px; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.loader {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--sage);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Doc list ── */
+.doc-list {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+.doc-list-header, .doc-row {
+  display: grid;
+  grid-template-columns: 2fr 80px 80px 1fr 70px;
+  gap: 12px;
+  padding: 14px 20px;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+.doc-list-header {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: var(--text-xs);
+  border-bottom: 1px solid var(--border);
+}
+.doc-row { border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
+.doc-row:last-child { border-bottom: none; }
+.doc-row:hover { background: var(--sage-bg); }
+.col-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-name { color: var(--text); cursor: pointer; font-weight: 500; }
+.doc-name:hover { color: var(--sage); text-decoration: underline; }
+
+.type-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.type-badge.pdf { background: var(--rose-light); color: var(--dusty-rose); }
+.type-badge.markdown { background: var(--blue-light); color: var(--dusty-blue); }
+
+.status-badge {
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
-.status-pending { background: #fef3c7; color: #d97706; }
-.status-processing { background: #dbeafe; color: #2563eb; }
-.status-done { background: #d1fae5; color: #059669; }
-.status-fail { background: #fee2e2; color: #dc2626; }
+.badge-pending { background: #fef7e0; color: #9d8100; }
+.badge-processing { background: var(--blue-light); color: var(--dusty-blue); }
+.badge-done { background: var(--sage-light); color: var(--sage); }
+.badge-fail { background: var(--rose-light); color: var(--error); }
+
+.col-date { color: var(--text-muted); font-size: var(--text-xs); }
+.btn-row-del {
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.btn-row-del:hover { background: var(--rose-light); color: var(--error); }
+
+.doc-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  background: var(--surface-alt);
+  border-top: 1px solid var(--border-light);
+}
+.count-text { font-size: var(--text-xs); color: var(--text-muted); }
+.btn-more {
+  padding: 6px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: var(--text-xs); font-family: var(--font); cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-more:hover { background: var(--surface-alt); color: var(--text); }
+.btn-more:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

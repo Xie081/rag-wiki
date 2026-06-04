@@ -19,9 +19,7 @@ async function loadKBs() {
   try {
     const { data } = await getKnowledgeBases()
     knowledgeBases.value = data
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 async function handleCreate() {
@@ -39,61 +37,88 @@ async function handleDelete(id: number) {
   await loadKBs()
 }
 
-function goToKB(id: number) {
-  router.push(`/knowledge-base/${id}`)
-}
-
+function goToKB(id: number) { router.push(`/knowledge-base/${id}`) }
 onMounted(loadKBs)
 </script>
 
 <template>
   <div class="dashboard">
-    <header>
-      <h1>📚 我的知识库</h1>
-      <div class="header-right">
-        <button class="btn-primary" @click="showCreate = true">+ 新建知识库</button>
-        <button class="btn-logout" @click="authStore.logout()">退出</button>
+    <!-- Header -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark">R</span>
+          <span class="brand-text">RAG Wiki</span>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-primary" @click="showCreate = true">
+            <span class="btn-icon">+</span> 新建知识库
+          </button>
+          <button class="btn-ghost" @click="authStore.logout()">退出</button>
+        </div>
       </div>
     </header>
 
-    <main>
+    <main class="main-content">
       <!-- Create modal -->
-      <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
-        <div class="modal">
-          <h3>新建知识库</h3>
-          <input v-model="newName" placeholder="知识库名称" @keyup.enter="handleCreate" />
-          <textarea v-model="newDesc" placeholder="描述（可选）" rows="3" />
-          <div class="modal-actions">
-            <button class="btn-cancel" @click="showCreate = false">取消</button>
-            <button class="btn-primary" @click="handleCreate" :disabled="!newName.trim()">创建</button>
+      <Teleport to="body">
+        <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
+          <div class="modal">
+            <h3>新建知识库</h3>
+            <input
+              v-model="newName"
+              placeholder="知识库名称"
+              autofocus
+              @keyup.enter="handleCreate"
+            />
+            <textarea v-model="newDesc" placeholder="描述（选填）" rows="3" />
+            <div class="modal-btns">
+              <button class="btn-ghost" @click="showCreate = false">取消</button>
+              <button class="btn-primary" @click="handleCreate" :disabled="!newName.trim()">创建</button>
+            </div>
           </div>
         </div>
-      </div>
+      </Teleport>
 
       <!-- Loading -->
-      <div v-if="loading" class="empty">加载中...</div>
+      <div v-if="loading" class="state-box">
+        <div class="loader" />
+        <p>加载中...</p>
+      </div>
 
       <!-- Empty -->
-      <div v-else-if="knowledgeBases.length === 0" class="empty">
-        <p>📭 还没有知识库</p>
-        <button class="btn-primary" @click="showCreate = true">创建第一个知识库</button>
+      <div v-else-if="knowledgeBases.length === 0" class="state-box">
+        <div class="empty-icon">📚</div>
+        <h2>还没有知识库</h2>
+        <p>创建你的第一个知识库，开始上传文档并与 AI 对话</p>
+        <button class="btn-primary" @click="showCreate = true">创建知识库</button>
       </div>
 
       <!-- KB Grid -->
       <div v-else class="kb-grid">
         <div
-          v-for="kb in knowledgeBases"
+          v-for="(kb, i) in knowledgeBases"
           :key="kb.id"
           class="kb-card"
+          :style="{ animationDelay: `${i * 0.06}s` }"
           @click="goToKB(kb.id)"
         >
-          <div class="kb-icon">📁</div>
-          <div class="kb-info">
+          <div class="kb-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              <line x1="8" y1="7" x2="16" y2="7"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </div>
+          <div class="kb-card-body">
             <h3>{{ kb.name }}</h3>
             <p>{{ kb.description || '暂无描述' }}</p>
-            <span class="kb-date">{{ new Date(kb.createdAt).toLocaleDateString() }}</span>
+            <span class="kb-date">{{ new Date(kb.createdAt).toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric' }) }}</span>
           </div>
-          <button class="btn-delete" @click.stop="handleDelete(kb.id)" title="删除">✕</button>
+          <button class="kb-delete" @click.stop="handleDelete(kb.id)" title="删除">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
       </div>
     </main>
@@ -101,119 +126,187 @@ onMounted(loadKBs)
 </template>
 
 <style scoped>
-.dashboard { min-height: 100vh; background: #f0f2f5; }
-header {
+.dashboard { min-height: 100vh; background: var(--bg); }
+
+/* ── Topbar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-light);
+}
+.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 64px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px 32px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  justify-content: space-between;
 }
-header h1 { font-size: 1.4rem; margin: 0; }
-.header-right { display: flex; gap: 12px; }
-
-.btn-primary {
-  padding: 8px 20px;
-  background: #4f46e5;
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--sage), var(--dusty-blue));
   color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px;
 }
-.btn-primary:hover { background: #4338ca; }
+.brand-text { font-weight: 600; font-size: var(--text-lg); color: var(--text); }
+.topbar-actions { display: flex; gap: 12px; align-items: center; }
+
+/* ── Buttons ── */
+.btn-primary {
+  padding: 10px 22px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--sage), #7a8f74);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-logout {
+.btn-icon { font-size: 18px; line-height: 1; }
+
+.btn-ghost {
   padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
   background: transparent;
-  color: #666;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font);
   cursor: pointer;
+  transition: all 0.2s var(--ease);
 }
-.btn-delete {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  background: #fee2e2;
-  color: #ef4444;
-  border: none;
+.btn-ghost:hover { background: var(--surface-alt); color: var(--text); }
+
+/* ── Main ── */
+.main-content { max-width: 1200px; margin: 0 auto; padding: 40px 32px; }
+
+/* ── State ── */
+.state-box {
+  text-align: center;
+  padding: 100px 20px;
+  animation: fadeInUp 0.5s var(--ease);
+}
+.state-box h2 { margin-bottom: 8px; }
+.state-box p { margin-bottom: 24px; }
+.empty-icon { font-size: 56px; margin-bottom: 16px; }
+.loader {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--sage);
   border-radius: 50%;
-  font-size: 0.75rem;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
 }
-.kb-card:hover .btn-delete { opacity: 1; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-main { padding: 32px; max-width: 1200px; margin: 0 auto; }
-
+/* ── Grid ── */
 .kb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
 }
 .kb-card {
   position: relative;
   display: flex;
-  gap: 16px;
-  padding: 24px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  gap: 18px;
+  padding: 28px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
   cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: all 0.25s var(--ease);
+  animation: fadeIn 0.5s var(--ease) both;
 }
-.kb-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); transform: translateY(-2px); }
-.kb-icon { font-size: 2rem; }
-.kb-info { flex: 1; min-width: 0; }
-.kb-info h3 { margin: 0 0 6px; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-info p { margin: 0 0 8px; color: #888; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-date { color: #aaa; font-size: 0.8rem; }
-
-.empty {
-  text-align: center;
-  padding: 80px 20px;
-  color: #999;
+.kb-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--sage-light);
 }
-.empty p { font-size: 1.2rem; margin-bottom: 16px; }
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
+.kb-card-icon {
+  flex-shrink: 0;
+  width: 56px; height: 56px;
+  border-radius: var(--radius);
+  background: var(--sage-bg);
+  color: var(--sage);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+}
+.kb-card-body { flex: 1; min-width: 0; }
+.kb-card-body h3 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kb-card-body p {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 8px;
+}
+.kb-date { font-size: var(--text-xs); color: var(--warm-gray); }
+
+.kb-delete {
+  position: absolute; top: 14px; right: 14px;
+  width: 30px; height: 30px;
+  border: none; border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: all 0.2s var(--ease);
+}
+.kb-card:hover .kb-delete { opacity: 1; }
+.kb-delete:hover { background: var(--rose-light); color: var(--error); }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
 }
 .modal {
-  background: #fff;
-  padding: 32px;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 36px;
   width: 100%;
-  max-width: 440px;
+  max-width: 460px;
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.3s var(--ease);
 }
-.modal h3 { margin: 0 0 16px; }
+.modal h3 { margin-bottom: 20px; font-size: var(--text-lg); }
 .modal input, .modal textarea {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-family: var(--font);
+  background: var(--surface-alt);
+  color: var(--text);
+  outline: none;
   margin-bottom: 12px;
-  box-sizing: border-box;
-  font-family: inherit;
+  transition: border-color 0.2s var(--ease);
 }
-.modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
-.btn-cancel {
-  padding: 8px 20px;
-  background: #f3f4f6;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-}
+.modal input:focus, .modal textarea:focus { border-color: var(--sage); }
+.modal textarea { resize: vertical; }
+.modal-btns { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
 </style>
