@@ -5,22 +5,6 @@ export interface User {
   email: string
 }
 
-export interface LoginRequest {
-  username: string
-  password: string
-}
-
-export interface RegisterRequest {
-  username: string
-  password: string
-  email: string
-}
-
-export interface AuthResponse {
-  token: string
-  user: User
-}
-
 // Knowledge Base
 export interface KnowledgeBase {
   id: number
@@ -52,9 +36,4 @@ export interface ChatMessage {
 export interface CitationSource {
   documentTitle: string
   snippet: string
-}
-
-export interface ChatRequest {
-  knowledgeBaseId: number
-  question: string
 }

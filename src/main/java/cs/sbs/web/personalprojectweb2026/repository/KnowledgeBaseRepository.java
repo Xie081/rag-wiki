@@ -6,5 +6,4 @@ import java.util.List;
 
 public interface KnowledgeBaseRepository extends JpaRepository<KnowledgeBase, Long> {
     List<KnowledgeBase> findByUserIdOrderByCreatedAtDesc(Long userId);
-    long countByUserId(Long userId);
 }

@@ -35,11 +35,6 @@ public class DocumentService {
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
 
-    public List<Document> listByKb(Long kbId, Long userId) {
-        kbService.getById(kbId, userId); // verify access
-        return documentRepository.findByKbIdOrderByCreatedAtDesc(kbId);
-    }
-
     public Page<Document> listByKb(Long kbId, Long userId, int page, int size) {
         kbService.getById(kbId, userId); // verify access
         Pageable pageable = PageRequest.of(page, size);

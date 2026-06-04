@@ -1,6 +1,5 @@
 package cs.sbs.web.personalprojectweb2026.controller;
 
-import cs.sbs.web.personalprojectweb2026.config.SecurityUtil;
 import cs.sbs.web.personalprojectweb2026.service.RagService;
 import cs.sbs.web.personalprojectweb2026.service.RagService.ConversationMessage;
 import cs.sbs.web.personalprojectweb2026.service.RagService.RagResult;
@@ -30,7 +29,6 @@ public class ChatController {
 
     private final RagService ragService;
     private final StreamingChatModel streamingChatModel;
-    private final SecurityUtil securityUtil;
     private final Executor taskExecutor;
     private final ObjectMapper objectMapper;
 

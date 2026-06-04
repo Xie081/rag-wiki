@@ -4,7 +4,6 @@ import type { ChatMessage } from '@/types'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
-  const isStreaming = ref(false)
 
   function addMessage(message: ChatMessage) {
     messages.value.push(message)
@@ -21,5 +20,5 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
   }
 
-  return { messages, isStreaming, addMessage, updateLastAssistantMessage, clearMessages }
+  return { messages, addMessage, updateLastAssistantMessage, clearMessages }
 })

@@ -15,10 +15,6 @@ export function getDocuments(kbId: number, page = 0, size = 20) {
   })
 }
 
-export function getDocument(id: number) {
-  return api.get<Document>(`/documents/${id}`)
-}
-
 export function uploadDocument(kbId: number, file: File) {
   const formData = new FormData()
   formData.append('file', file)

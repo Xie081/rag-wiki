@@ -9,6 +9,5 @@ import java.util.List;
 public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findByKbIdOrderByCreatedAtDesc(Long kbId);
     Page<Document> findByKbIdOrderByCreatedAtDesc(Long kbId, Pageable pageable);
-    List<Document> findByUserIdOrderByCreatedAtDesc(Long userId);
     void deleteByKbId(Long kbId);
 }

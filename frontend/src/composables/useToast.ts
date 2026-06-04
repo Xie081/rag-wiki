@@ -24,7 +24,6 @@ export function useToast() {
 
   function success(message: string) { show(message, 'success') }
   function error(message: string) { show(message, 'error') }
-  function info(message: string) { show(message, 'info') }
 
-  return { toasts, show, remove, success, error, info }
+  return { toasts, remove, success, error }
 }

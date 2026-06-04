@@ -13,10 +13,6 @@ export function createKnowledgeBase(data: { name: string; description: string })
   return api.post<KnowledgeBase>('/knowledge-bases', data)
 }
 
-export function updateKnowledgeBase(id: number, data: { name?: string; description?: string }) {
-  return api.put<KnowledgeBase>(`/knowledge-bases/${id}`, data)
-}
-
 export function deleteKnowledgeBase(id: number) {
   return api.delete(`/knowledge-bases/${id}`)
 }

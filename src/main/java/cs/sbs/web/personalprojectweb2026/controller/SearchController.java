@@ -1,6 +1,5 @@
 package cs.sbs.web.personalprojectweb2026.controller;
 
-import cs.sbs.web.personalprojectweb2026.config.SecurityUtil;
 import cs.sbs.web.personalprojectweb2026.model.entity.Document;
 import cs.sbs.web.personalprojectweb2026.model.entity.DocumentChunk;
 import cs.sbs.web.personalprojectweb2026.repository.DocumentChunkRepository;
@@ -21,15 +20,12 @@ public class SearchController {
     private final EmbeddingService embeddingService;
     private final DocumentChunkRepository chunkRepository;
     private final DocumentRepository documentRepository;
-    private final SecurityUtil securityUtil;
 
     /**
      * Semantic search across all documents in a knowledge base.
      */
     @GetMapping("/{kbId}")
     public ResponseEntity<?> search(@PathVariable Long kbId, @RequestParam("q") String query) {
-        Long userId = securityUtil.getCurrentUser().getId();
-
         // Embed the query
         float[] queryEmbedding = embeddingService.embed(query);
         String vectorStr = embeddingService.toPgVectorString(queryEmbedding);

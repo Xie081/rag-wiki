@@ -5,6 +5,7 @@ import { getDocumentDetail } from '@/api/document'
 import { useToast } from '@/composables/useToast'
 import type { Document } from '@/types'
 import type { DocumentDetailResponse } from '@/api/document'
+import { getStatusText, getStatusClass } from '@/utils/status'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,13 +15,6 @@ const toast = useToast()
 const loading = ref(true)
 const detail = ref<DocumentDetailResponse | null>(null)
 const doc = ref<Document | null>(null)
-
-function getStatusText(status: string): string {
-  return { UPLOADED:'待处理', PROCESSING:'处理中', COMPLETED:'已完成', FAILED:'失败' }[status] || status
-}
-function getStatusClass(status: string): string {
-  return { UPLOADED:'badge-pending', PROCESSING:'badge-processing', COMPLETED:'badge-done', FAILED:'badge-fail' }[status] || ''
-}
 
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return '未知'
@@ -215,5 +209,4 @@ onMounted(async () => {
   animation: spin 0.8s linear infinite;
   margin: 0 auto 14px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>

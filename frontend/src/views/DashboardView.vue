@@ -207,7 +207,6 @@ onMounted(loadKBs)
   animation: spin 0.8s linear infinite;
   margin: 0 auto 16px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Grid ── */
 .kb-grid {

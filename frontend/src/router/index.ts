@@ -6,35 +6,29 @@ const router = createRouter({
     // Public
     {
       path: '/',
-      name: 'landing',
       component: () => import('@/views/LandingView.vue')
     },
     {
       path: '/login',
-      name: 'login',
       component: () => import('@/views/LoginView.vue')
     },
     {
       path: '/register',
-      name: 'register',
       component: () => import('@/views/RegisterView.vue')
     },
     // Authenticated
     {
       path: '/app',
-      name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/knowledge-base/:id',
-      name: 'knowledge-base',
       component: () => import('@/views/KnowledgeBaseView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/document/:id',
-      name: 'document',
       component: () => import('@/views/DocumentView.vue'),
       meta: { requiresAuth: true }
     }

@@ -47,12 +47,8 @@ public class RagService {
             "what", "which", "who", "whom", "how", "when", "where", "why");
 
     /**
-     * RAG query: retrieve → augment → generate (with optional conversation history).
+     * RAG 问答：检索 → 增强 → 生成。
      */
-    public RagResult ask(Long kbId, String question) {
-        return ask(kbId, question, List.of());
-    }
-
     public RagResult ask(Long kbId, String question, List<ConversationMessage> history) {
         List<DocumentChunk> chunks = retrieveChunks(kbId, question);
 
@@ -94,12 +90,8 @@ public class RagService {
     }
 
     /**
-     * Build rendered prompt + sources for streaming (with optional conversation history).
+     * 构建渲染后的 Prompt + 来源引用，供流式问答使用。
      */
-    public RenderedPromptWithSources buildRenderedPrompt(Long kbId, String question) {
-        return buildRenderedPrompt(kbId, question, List.of());
-    }
-
     public RenderedPromptWithSources buildRenderedPrompt(Long kbId, String question,
                                                           List<ConversationMessage> history) {
         long t0 = System.currentTimeMillis();

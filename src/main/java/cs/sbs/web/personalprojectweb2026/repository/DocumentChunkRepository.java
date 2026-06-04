@@ -13,11 +13,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
 
     List<DocumentChunk> findByDocumentIdOrderByChunkIndex(Long documentId);
 
-    List<DocumentChunk> findByKbId(Long kbId);
-
     void deleteByDocumentId(Long documentId);
-
-    void deleteByKbId(Long kbId);
 
     /**
      * Cosine similarity search using PGVector <=> operator.

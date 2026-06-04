@@ -7,6 +7,7 @@ import { useChatStore } from '@/stores/chat'
 import { useToast } from '@/composables/useToast'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
 import type { KnowledgeBase, Document } from '@/types'
+import { getStatusText, getStatusClass } from '@/utils/status'
 
 const route = useRoute()
 const router = useRouter()
@@ -71,13 +72,6 @@ async function handleDeleteDoc(id: number) {
 async function handleDeleteKB() {
   if (!confirm('确定删除整个知识库？')) return
   await deleteKnowledgeBase(kbId); router.push('/app')
-}
-
-function getStatusText(status: string): string {
-  return { UPLOADED:'待处理', PROCESSING:'处理中', COMPLETED:'已完成', FAILED:'失败' }[status] || status
-}
-function getStatusClass(status: string): string {
-  return { UPLOADED:'badge-pending', PROCESSING:'badge-processing', COMPLETED:'badge-done', FAILED:'badge-fail' }[status] || ''
 }
 
 onMounted(load)
@@ -257,7 +251,6 @@ onUnmounted(() => chatStore.clearMessages())
   animation: spin 0.8s linear infinite;
   margin: 0 auto 14px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Doc list ── */
 .doc-list {

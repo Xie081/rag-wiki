@@ -1,17 +1,8 @@
 import api from './index'
 import type { ChatMessage } from '@/types'
 
-export interface ChatAskResponse {
-  answer: string
-  sources: Array<{ documentTitle: string; snippet: string }>
-}
-
-export function askQuestion(knowledgeBaseId: number, question: string, history?: ChatMessage[]) {
-  return api.post<ChatAskResponse>('/chat/ask', { knowledgeBaseId, question, history })
-}
-
 /**
- * SSE streaming chat. Returns an AbortController to cancel.
+ * SSE 流式问答。返回 AbortController 用于取消。
  */
 export function streamQuestion(
   knowledgeBaseId: number,

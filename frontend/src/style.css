@@ -17,11 +17,9 @@
 
   --dusty-rose:  #C4A59D;
   --rose-light:  #F5EEEC;
-  --rose-bg:     #F9F5F3;
 
   --warm-gray:   #9C9A95;
   --gray-light:  #EBE9E5;
-  --gray-bg:     #F5F4F1;
 
   --bg:          #F8F7F5;
   --surface:     #FFFFFF;
@@ -39,7 +37,6 @@
   --warning:     #C4B28B;
 
   /* ── Shadows ── */
-  --shadow-xs:   0 1px 2px rgba(0,0,0,0.04);
   --shadow-sm:   0 2px 8px rgba(0,0,0,0.06);
   --shadow-md:   0 6px 24px rgba(0,0,0,0.07);
   --shadow-lg:   0 16px 48px rgba(0,0,0,0.09);
@@ -59,7 +56,6 @@
   --radius-sm:   8px;
   --radius:      14px;
   --radius-lg:   20px;
-  --radius-xl:   28px;
 
   /* ── Transitions ── */
   --ease:        cubic-bezier(0.4, 0, 0.2, 1);
@@ -129,7 +125,6 @@ a:hover { color: #5d7488; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
