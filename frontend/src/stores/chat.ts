@@ -20,7 +20,9 @@ export const useChatStore = defineStore('chat', () => {
   function doSync() {
     if (syncTimer) { clearTimeout(syncTimer); syncTimer = null }
     if (currentKbId != null && messages.value.length > 0) {
-      syncHistory(currentKbId, toRemote()).catch(() => {})
+      syncHistory(currentKbId, toRemote()).catch(e => {
+        console.error('Chat sync failed:', e)
+      })
     }
   }
 

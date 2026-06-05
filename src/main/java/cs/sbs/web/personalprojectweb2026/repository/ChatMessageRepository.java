@@ -9,5 +9,5 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     List<ChatMessage> findByUserIdAndKbIdOrderByCreatedAtAsc(Long userId, Long kbId);
 
-    void deleteByKbId(Long kbId);
+    void deleteByUserIdAndKbId(Long userId, Long kbId);
 }

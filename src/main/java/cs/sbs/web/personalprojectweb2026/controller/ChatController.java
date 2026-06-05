@@ -191,7 +191,7 @@ public class ChatController {
     public ResponseEntity<?> syncHistory(@PathVariable Long kbId, @RequestBody List<Map<String, Object>> body) {
         Long userId = securityUtil.getCurrentUserId();
         // Replace: delete old messages for this user+kb, then insert new ones
-        chatMessageRepository.deleteByKbId(kbId);
+        chatMessageRepository.deleteByUserIdAndKbId(userId, kbId);
         for (Map<String, Object> item : body) {
             ChatMessage msg = ChatMessage.builder()
                     .userId(userId)
@@ -202,6 +202,7 @@ public class ChatController {
                     .build();
             chatMessageRepository.save(msg);
         }
+        log.info("Synced {} messages for userId={} kbId={}", body.size(), userId, kbId);
         return ResponseEntity.ok(Map.of("synced", body.size()));
     }
 }
