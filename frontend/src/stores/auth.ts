@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
+import router from '@/router'
 
 export const useAuthStore = defineStore('auth', () => {
 
@@ -16,7 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     localStorage.removeItem('token')
-    window.location.href = '/login'
+    router.push('/login')
   }
 
   return { login, register, logout }
