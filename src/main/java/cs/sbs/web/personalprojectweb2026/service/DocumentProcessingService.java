@@ -60,16 +60,14 @@ public class DocumentProcessingService {
                 return;
             }
 
-            // Step 3 & 4: Embed + store each chunk via DeepSeek embedding API
+            // Step 3 & 4: Batch embed all chunks, then store
+            List<float[]> embeddings = embeddingService.embedBatch(chunks);
             for (int i = 0; i < chunks.size(); i++) {
-                String chunkText = chunks.get(i);
-                float[] embedding = embeddingService.embed(chunkText);
-                String vectorStr = embeddingService.toPgVectorString(embedding);
-
+                String vectorStr = embeddingService.toPgVectorString(embeddings.get(i));
                 jdbcTemplate.update("""
                     INSERT INTO document_chunks (content, chunk_index, embedding, document_id, kb_id, created_at)
                     VALUES (?, ?, ?::vector, ?, ?, NOW())
-                    """, chunkText, i, vectorStr, doc.getId(), doc.getKbId());
+                    """, chunks.get(i), i, vectorStr, doc.getId(), doc.getKbId());
             }
 
             // Step 5: Generate AI summary

@@ -62,12 +62,33 @@ public class DocumentParserService {
         try (InputStream is = Files.newInputStream(filePath);
              XWPFDocument document = new XWPFDocument(is)) {
             StringBuilder sb = new StringBuilder();
-            document.getParagraphs().forEach(p -> {
-                sb.append(p.getText()).append("\n");
-            });
+            // Iterate body elements in order to capture both paragraphs and tables
+            for (var elem : document.getBodyElements()) {
+                switch (elem.getElementType()) {
+                    case PARAGRAPH -> {
+                        String text = ((org.apache.poi.xwpf.usermodel.XWPFParagraph) elem).getText();
+                        if (text != null && !text.isBlank()) {
+                            sb.append(text).append("\n");
+                        }
+                    }
+                    case TABLE -> {
+                        var table = (org.apache.poi.xwpf.usermodel.XWPFTable) elem;
+                        for (var row : table.getRows()) {
+                            for (var cell : row.getTableCells()) {
+                                String text = cell.getText();
+                                if (text != null && !text.isBlank()) {
+                                    sb.append(text).append("\t");
+                                }
+                            }
+                            sb.append("\n");
+                        }
+                        sb.append("\n");
+                    }
+                }
+            }
             String text = sb.toString();
-            log.info("Parsed DOCX: {} paragraphs, {} chars",
-                    document.getParagraphs().size(), text.length());
+            log.info("Parsed DOCX: {} body elements, {} chars",
+                    document.getBodyElements().size(), text.length());
             return text;
         }
     }

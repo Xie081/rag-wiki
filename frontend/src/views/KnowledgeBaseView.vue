@@ -115,11 +115,11 @@ onUnmounted(() => chatStore.clearMessages())
           <div v-else-if="documents.length === 0" class="state-box">
             <div class="empty-icon">📄</div>
             <h3>还没有文档</h3>
-            <p>上传 PDF 或 Markdown 文档开始构建知识库</p>
+            <p>上传 PDF、Markdown、TXT、DOCX 或 HTML 文档开始构建知识库</p>
             <label class="btn-upload">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               上传第一个文档
-              <input type="file" accept=".pdf,.md,.markdown" hidden @change="handleUpload" />
+              <input type="file" accept=".pdf,.md,.markdown,.txt,.docx,.html,.htm" hidden @change="handleUpload" />
             </label>
           </div>
 

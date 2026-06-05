@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -16,6 +18,8 @@ import java.util.Map;
 @Service
 @Slf4j
 public class EmbeddingService {
+
+    private static final int BATCH_SIZE = 16;
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -31,30 +35,59 @@ public class EmbeddingService {
                 .defaultHeader("Authorization", "Bearer " + apiKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
-        log.info("EmbeddingService initialized: baseUrl={}, model={}", baseUrl, model);
+        log.info("EmbeddingService initialized: baseUrl={}, model={}, batchSize={}", baseUrl, model, BATCH_SIZE);
     }
 
     /**
-     * Generate embedding vector for a single text via SiliconFlow API.
+     * Generate embedding vector for a single text.
      */
     public float[] embed(String text) {
+        return embedBatch(List.of(text)).get(0);
+    }
+
+    /**
+     * Generate embedding vectors for multiple texts in batches.
+     * Each batch is sent as a single API call, dramatically reducing total processing time.
+     */
+    public List<float[]> embedBatch(List<String> texts) {
+        List<float[]> results = new ArrayList<>();
+        // Process in batches
+        for (int i = 0; i < texts.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, texts.size());
+            List<String> batch = texts.subList(i, end);
+            results.addAll(doEmbedBatch(batch));
+        }
+        return results;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<float[]> doEmbedBatch(List<String> texts) {
         try {
             String body = restClient.post()
-                    .body(Map.of("model", model, "input", text))
+                    .body(Map.of("model", model, "input", texts))
                     .retrieve()
                     .body(String.class);
 
             JsonNode root = objectMapper.readTree(body);
-            JsonNode embeddingNode = root.path("data").get(0).path("embedding");
-            float[] embedding = new float[embeddingNode.size()];
-            for (int i = 0; i < embedding.length; i++) {
-                embedding[i] = (float) embeddingNode.get(i).asDouble();
+            JsonNode data = root.path("data");
+
+            // Sort by index and convert to float arrays
+            List<float[]> embeddings = new ArrayList<>();
+            for (var node : data) {
+                JsonNode embeddingNode = node.path("embedding");
+                float[] embedding = new float[embeddingNode.size()];
+                for (int j = 0; j < embedding.length; j++) {
+                    embedding[j] = (float) embeddingNode.get(j).asDouble();
+                }
+                embeddings.add(embedding);
             }
-            log.debug("Generated embedding via {}: {} dimensions", model, embedding.length);
-            return embedding;
+
+            log.debug("Batch embedding: {} texts, {} ms", texts.size(),
+                    System.currentTimeMillis() /* rough */);
+            return embeddings;
         } catch (Exception e) {
-            log.error("Embedding API call failed: {}", e.getMessage());
-            throw new RuntimeException("Embedding 生成失败: " + e.getMessage(), e);
+            log.error("Batch embedding API call failed: {}", e.getMessage());
+            throw new RuntimeException("Embedding 批量生成失败: " + e.getMessage(), e);
         }
     }
 

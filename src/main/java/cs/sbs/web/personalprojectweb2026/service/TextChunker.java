@@ -7,13 +7,13 @@ import java.util.List;
 
 /**
  * Simple text chunker using character-based splitting with overlap.
- * Chunk size ~500 chars, overlap ~100 chars.
+ * Chunk size ~1000 chars, overlap ~150 chars.
  */
 @Component
 public class TextChunker {
 
-    private static final int DEFAULT_CHUNK_SIZE = 500;
-    private static final int DEFAULT_OVERLAP = 100;
+    private static final int DEFAULT_CHUNK_SIZE = 1000;
+    private static final int DEFAULT_OVERLAP = 150;
 
     public List<String> chunk(String text) {
         return chunk(text, DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP);

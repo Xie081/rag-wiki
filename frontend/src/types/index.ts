@@ -17,7 +17,7 @@ export interface KnowledgeBase {
 export interface Document {
   id: number
   title: string
-  fileType: 'PDF' | 'MARKDOWN'
+  fileType: 'PDF' | 'MARKDOWN' | 'TXT' | 'DOCX' | 'HTML'
   originalName: string
   status: 'UPLOADED' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
   summary: string | null
