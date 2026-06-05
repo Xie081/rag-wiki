@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getKnowledgeBase, deleteKnowledgeBase } from '@/api/knowledgeBase'
 import { getDocuments, uploadDocument, deleteDocument } from '@/api/document'
