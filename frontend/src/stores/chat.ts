@@ -8,6 +8,22 @@ export const useChatStore = defineStore('chat', () => {
   let currentKbId: number | null = null
   let syncTimer: ReturnType<typeof setTimeout> | null = null
 
+  function toRemote(): RemoteMessage[] {
+    return messages.value.map(m => ({
+      role: m.role,
+      content: m.content,
+      sources: m.sources ? JSON.stringify(m.sources) : undefined,
+      timestamp: m.timestamp
+    }))
+  }
+
+  function doSync() {
+    if (syncTimer) { clearTimeout(syncTimer); syncTimer = null }
+    if (currentKbId != null && messages.value.length > 0) {
+      syncHistory(currentKbId, toRemote()).catch(() => {})
+    }
+  }
+
   async function setKbId(kbId: number) {
     currentKbId = kbId
     try {
@@ -24,32 +40,26 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  function persist() {
-    if (syncTimer) clearTimeout(syncTimer)
-    syncTimer = setTimeout(() => {
-      if (currentKbId != null) {
-        const remote: RemoteMessage[] = messages.value.map(m => ({
-          role: m.role,
-          content: m.content,
-          sources: m.sources ? JSON.stringify(m.sources) : undefined,
-          timestamp: m.timestamp
-        }))
-        syncHistory(currentKbId, remote).catch(() => {})
-      }
-    }, 1000)
-  }
-
   function addMessage(message: ChatMessage) {
     messages.value.push(message)
-    persist()
+    // User message: sync immediately
+    if (syncTimer) clearTimeout(syncTimer)
+    syncTimer = setTimeout(doSync, 500)
   }
 
   function updateLastAssistantMessage(content: string) {
     const last = messages.value[messages.value.length - 1]
     if (last && last.role === 'assistant') {
       last.content = content
-      persist()
+      // Debounce stream tokens, force sync when done
+      if (syncTimer) clearTimeout(syncTimer)
+      syncTimer = setTimeout(doSync, 300)
     }
+  }
+
+  /** Call when streaming completes — force immediate sync */
+  function flushSync() {
+    doSync()
   }
 
   function clearMessages() {
@@ -59,5 +69,10 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  return { messages, setKbId, addMessage, updateLastAssistantMessage, clearMessages }
+  // Sync on page unload (refresh / close tab)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', doSync)
+  }
+
+  return { messages, setKbId, addMessage, updateLastAssistantMessage, flushSync, clearMessages }
 })

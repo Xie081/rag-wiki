@@ -49,7 +49,7 @@ async function handleSend(question: string) {
     },
     (srcs) => { sources.value = srcs },
     () => { isStreaming.value = false },
-    () => { isStreaming.value = false },
+    () => { isStreaming.value = false; chatStore.flushSync() },
     history
   )
 }
