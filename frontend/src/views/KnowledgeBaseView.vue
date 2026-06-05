@@ -6,6 +6,7 @@ import { getDocuments, uploadDocument, deleteDocument } from '@/api/document'
 import { useChatStore } from '@/stores/chat'
 import { useToast } from '@/composables/useToast'
 import ChatPanel from '@/components/chat/ChatPanel.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import type { KnowledgeBase, Document } from '@/types'
 import { getStatusText, getStatusClass } from '@/utils/status'
 
@@ -24,6 +25,31 @@ const totalPages = ref(0)
 const totalElements = ref(0)
 const loadingMore = ref(false)
 const PAGE_SIZE = 20
+
+// Confirm dialog state
+const showConfirm = ref(false)
+const confirmMessage = ref('')
+const pendingDeleteId = ref<number | null>(null)
+let confirmAction: (() => Promise<void>) | null = null
+
+function showConfirmDialog(message: string, action: () => Promise<void>) {
+  confirmMessage.value = message
+  confirmAction = action
+  showConfirm.value = true
+}
+
+async function onConfirm() {
+  showConfirm.value = false
+  const action = confirmAction
+  confirmAction = null
+  if (action) await action()
+}
+
+function onCancel() {
+  showConfirm.value = false
+  confirmAction = null
+  pendingDeleteId.value = null
+}
 
 async function load() {
   loading.value = true
@@ -64,14 +90,31 @@ async function handleUpload(e: Event) {
 
 function goToDoc(id: number) { router.push(`/document/${id}`) }
 
-async function handleDeleteDoc(id: number) {
-  if (!confirm('确定删除该文档？')) return
-  await deleteDocument(id); await load()
+function handleDeleteDoc(id: number) {
+  pendingDeleteId.value = id
+  showConfirmDialog('确定删除该文档？', async () => {
+    const docId = pendingDeleteId.value
+    if (docId === null) return
+    pendingDeleteId.value = null
+    // Optimistic remove
+    const idx = documents.value.findIndex(d => d.id === docId)
+    if (idx !== -1) documents.value.splice(idx, 1)
+    try {
+      await deleteDocument(docId)
+      toast.success('文档已删除')
+      await load()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || '删除失败')
+      await load()
+    }
+  })
 }
 
-async function handleDeleteKB() {
-  if (!confirm('确定删除整个知识库？')) return
-  await deleteKnowledgeBase(kbId); router.push('/app')
+function handleDeleteKB() {
+  showConfirmDialog('确定删除整个知识库？\n该操作不可恢复。', async () => {
+    await deleteKnowledgeBase(kbId)
+    router.push('/app')
+  })
 }
 
 onMounted(load)
@@ -154,6 +197,13 @@ onUnmounted(() => chatStore.clearMessages())
       </div>
     </main>
   </div>
+  <ConfirmDialog
+    :visible="showConfirm"
+    :message="confirmMessage"
+    confirmText="删除"
+    @confirm="onConfirm"
+    @cancel="onCancel"
+  />
 </template>
 
 <style scoped>
