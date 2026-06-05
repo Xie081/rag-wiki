@@ -39,7 +39,12 @@ async function handleLogin() {
 
     <div class="auth-card">
       <div class="card-header">
-        <div class="logo-mark">库</div>
+        <div class="logo-mark">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </div>
         <h1>智能知识库</h1>
       </div>
 
@@ -116,48 +121,48 @@ async function handleLogin() {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
   background: var(--surface);
   border-radius: var(--radius-lg);
-  padding: 48px 40px;
+  padding: 36px 32px;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-light);
   animation: fadeIn 0.6s var(--ease);
 }
 
-.card-header { text-align: center; margin-bottom: 36px; }
+.card-header { text-align: center; margin-bottom: 28px; }
 .logo-mark {
-  width: 52px; height: 52px;
+  width: 44px; height: 44px;
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--sage), var(--dusty-blue));
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   letter-spacing: 0;
 }
 .card-header h1 {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 600;
   margin-bottom: 4px;
   color: var(--text);
 }
 .card-header p {
   color: var(--text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
 }
 
 /* ── Fields ── */
-.field { margin-bottom: 16px; }
+.field { margin-bottom: 14px; }
 .field input {
   width: 100%;
-  padding: 14px 18px;
+  padding: 12px 16px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-family: var(--font);
   background: var(--surface-alt);
   color: var(--text);
@@ -174,9 +179,9 @@ async function handleLogin() {
 /* ── Error ── */
 .error-msg {
   color: var(--error);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   margin: 8px 0;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: var(--rose-light);
   border-radius: var(--radius-sm);
   border: 1px solid #edd5ce;
@@ -185,12 +190,12 @@ async function handleLogin() {
 /* ── Button ── */
 .btn-login {
   width: 100%;
-  padding: 14px;
+  padding: 12px;
   border: none;
   border-radius: var(--radius);
   background: linear-gradient(135deg, var(--sage), #7a8f74);
   color: #fff;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 600;
   font-family: var(--font);
   cursor: pointer;
@@ -198,7 +203,7 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 4px;
   transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 .btn-login:hover:not(:disabled) {
@@ -209,7 +214,7 @@ async function handleLogin() {
 .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .spinner {
-  width: 18px; height: 18px;
+  width: 16px; height: 16px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: #fff;
   border-radius: 50%;
@@ -218,9 +223,9 @@ async function handleLogin() {
 
 .footer-link {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 20px;
   color: var(--text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
 }
 .footer-link a {
   color: var(--dusty-blue);
