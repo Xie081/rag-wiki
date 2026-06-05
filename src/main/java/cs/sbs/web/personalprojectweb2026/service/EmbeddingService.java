@@ -1,31 +1,61 @@
 package cs.sbs.web.personalprojectweb2026.service;
 
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.embedding.EmbeddingRequest;
-import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
-import java.util.Collections;
+import java.util.Map;
 
+/**
+ * Generate embedding vectors via SiliconFlow API (OpenAI-compatible).
+ * Bypasses Spring AI auto-configuration to avoid base-url conflicts with DeepSeek chat.
+ */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmbeddingService {
 
-    private final EmbeddingModel embeddingModel;
+    private final RestClient restClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final String model;
+
+    public EmbeddingService(
+            @Value("${spring.ai.openai.embedding.base-url:https://api.siliconflow.cn/v1}") String baseUrl,
+            @Value("${spring.ai.openai.embedding.api-key:}") String apiKey,
+            @Value("${spring.ai.openai.embedding.options.model:BAAI/bge-m3}") String model) {
+        this.model = model;
+        this.restClient = RestClient.builder()
+                .baseUrl(baseUrl + "/embeddings")
+                .defaultHeader("Authorization", "Bearer " + apiKey)
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+        log.info("EmbeddingService initialized: baseUrl={}, model={}", baseUrl, model);
+    }
 
     /**
-     * Generate embedding vector for a single text.
-     * @return float array of embedding dimensions
+     * Generate embedding vector for a single text via SiliconFlow API.
      */
     public float[] embed(String text) {
-        EmbeddingRequest request = new EmbeddingRequest(Collections.singletonList(text), null);
-        EmbeddingResponse response = embeddingModel.call(request);
-        float[] embedding = response.getResult().getOutput();
-        log.debug("Generated embedding: {} dimensions", embedding.length);
-        return embedding;
+        try {
+            String body = restClient.post()
+                    .body(Map.of("model", model, "input", text))
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(body);
+            JsonNode embeddingNode = root.path("data").get(0).path("embedding");
+            float[] embedding = new float[embeddingNode.size()];
+            for (int i = 0; i < embedding.length; i++) {
+                embedding[i] = (float) embeddingNode.get(i).asDouble();
+            }
+            log.debug("Generated embedding via {}: {} dimensions", model, embedding.length);
+            return embedding;
+        } catch (Exception e) {
+            log.error("Embedding API call failed: {}", e.getMessage());
+            throw new RuntimeException("Embedding 生成失败: " + e.getMessage(), e);
+        }
     }
 
     /**
