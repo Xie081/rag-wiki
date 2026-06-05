@@ -124,6 +124,16 @@ public class DocumentService {
         documentRepository.delete(doc);
     }
 
+    public void reprocess(Long id, Long userId) {
+        Document doc = getById(id, userId);
+        // Delete existing chunks
+        chunkRepository.deleteByDocumentId(id);
+        // Reset and reprocess
+        doc.setStatus(Document.DocumentStatus.UPLOADED);
+        documentRepository.save(doc);
+        processingService.processDocument(id);
+    }
+
     /**
      * Detect file type from extension.
      */

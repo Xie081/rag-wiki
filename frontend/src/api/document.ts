@@ -36,3 +36,16 @@ export interface DocumentDetailResponse {
 export function getDocumentDetail(id: number) {
   return api.get<DocumentDetailResponse>(`/documents/${id}/detail`)
 }
+
+export function reprocessDocument(id: number) {
+  return api.post(`/documents/${id}/reprocess`)
+}
+
+export interface DocQaResponse {
+  answer: string
+  sources: Array<{ documentTitle: string; snippet: string }>
+}
+
+export function askDocument(id: number, question: string) {
+  return api.post<DocQaResponse>(`/documents/${id}/ask`, { question })
+}

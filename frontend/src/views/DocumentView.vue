@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getDocumentDetail } from '@/api/document'
+import { getDocumentDetail, reprocessDocument, askDocument } from '@/api/document'
 import { useToast } from '@/composables/useToast'
 import type { Document } from '@/types'
-import type { DocumentDetailResponse } from '@/api/document'
+import type { DocumentDetailResponse, DocQaResponse } from '@/api/document'
 import { getStatusText, getStatusClass } from '@/utils/status'
 
 const route = useRoute()
@@ -13,8 +13,15 @@ const docId = Number(route.params.id)
 const toast = useToast()
 
 const loading = ref(true)
+const reprocessing = ref(false)
 const detail = ref<DocumentDetailResponse | null>(null)
 const doc = ref<Document | null>(null)
+
+// QA state
+const qaQuestion = ref('')
+const qaLoading = ref(false)
+const qaResult = ref<DocQaResponse | null>(null)
+const qaError = ref('')
 
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return '未知'
@@ -23,7 +30,7 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-onMounted(async () => {
+async function loadDetail() {
   loading.value = true
   try {
     const { data } = await getDocumentDetail(docId)
@@ -33,7 +40,34 @@ onMounted(async () => {
     toast.error(err.response?.data?.message || '加载文档失败')
     router.back()
   } finally { loading.value = false }
-})
+}
+
+async function handleReprocess() {
+  reprocessing.value = true
+  try {
+    await reprocessDocument(docId)
+    toast.success('已重新加入处理队列')
+    doc.value!.status = 'UPLOADED'
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || '重新处理失败')
+  } finally { reprocessing.value = false; await loadDetail() }
+}
+
+async function handleAsk() {
+  const q = qaQuestion.value.trim()
+  if (!q || qaLoading.value) return
+  qaLoading.value = true
+  qaError.value = ''
+  qaResult.value = null
+  try {
+    const { data } = await askDocument(docId, q)
+    qaResult.value = data
+  } catch (err: any) {
+    qaError.value = err.response?.data?.message || '提问失败'
+  } finally { qaLoading.value = false }
+}
+
+onMounted(loadDetail)
 </script>
 
 <template>
@@ -60,7 +94,7 @@ onMounted(async () => {
       <div v-if="loading" class="state-box"><div class="loader" /><p>加载中...</p></div>
 
       <template v-else-if="doc && detail">
-        <!-- Summary -->
+        <!-- AI Summary -->
         <section class="card">
           <div class="card-head">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -72,22 +106,61 @@ onMounted(async () => {
           <p v-else class="placeholder">文档处理完成后将自动生成摘要</p>
         </section>
 
-        <!-- Chunks -->
+        <!-- Actions -->
+        <section v-if="doc.status === 'FAILED'" class="card">
+          <div class="card-head">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <h2>处理失败</h2>
+          </div>
+          <p class="placeholder">文档处理过程中出现错误，可能是 API 调用异常或文件格式问题。</p>
+          <button class="btn-retry" :disabled="reprocessing" @click="handleReprocess">
+            {{ reprocessing ? '重新处理中...' : '重新处理' }}
+          </button>
+        </section>
+
+        <!-- Document QA -->
         <section class="card">
           <div class="card-head">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-            <h2>文档分块</h2>
-            <span class="count-badge">{{ detail.chunkCount }}</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <h2>文档问答</h2>
+            <span v-if="detail.chunkCount" class="count-badge">{{ detail.chunkCount }} 个段落</span>
           </div>
-          <div v-if="detail.chunks.length === 0" class="placeholder">
-            文档尚未完成分块处理，请等待处理完成。
+
+          <div v-if="doc.status !== 'COMPLETED' && doc.status !== 'FAILED'" class="placeholder">
+            文档处理完成后即可提问
           </div>
-          <div v-else class="chunk-list">
-            <div v-for="(chunk, i) in detail.chunks" :key="i" class="chunk-item">
-              <div class="chunk-num">{{ chunk.chunkIndex + 1 }}</div>
-              <div class="chunk-text">{{ chunk.content }}</div>
+          <template v-else>
+            <!-- QA Input -->
+            <div class="qa-input-row">
+              <input
+                v-model="qaQuestion"
+                class="qa-input"
+                placeholder="针对此文档提问..."
+                @keyup.enter="handleAsk"
+                :disabled="qaLoading"
+              />
+              <button class="btn-ask" :disabled="qaLoading || !qaQuestion.trim()" @click="handleAsk">
+                {{ qaLoading ? '思考中...' : '提问' }}
+              </button>
             </div>
-          </div>
+
+            <!-- QA Result -->
+            <div v-if="qaLoading" class="qa-loading">
+              <div class="loader-sm" />
+              <span>正在分析文档...</span>
+            </div>
+            <div v-else-if="qaError" class="qa-error">{{ qaError }}</div>
+            <div v-else-if="qaResult" class="qa-result">
+              <p class="qa-answer">{{ qaResult.answer }}</p>
+              <details v-if="qaResult.sources.length" class="qa-sources">
+                <summary>参考来源 ({{ qaResult.sources.length }} 段)</summary>
+                <div v-for="(s, i) in qaResult.sources" :key="i" class="source-item">
+                  <span class="source-tag">段落 {{ i + 1 }}</span>
+                  <span class="source-text">{{ s.snippet }}</span>
+                </div>
+              </details>
+            </div>
+          </template>
         </section>
       </template>
     </main>
@@ -97,11 +170,8 @@ onMounted(async () => {
 <style scoped>
 .doc-page { min-height: 100vh; background: var(--bg); }
 
-/* ── Topbar ── */
-.topbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-light);
-}
+/* Topbar */
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border-light); }
 .topbar-inner { max-width: 900px; margin: 0 auto; padding: 20px 32px; }
 .topbar-inner h1 { font-size: var(--text-xl); margin: 12px 0 8px; word-break: break-all; }
 
@@ -129,21 +199,17 @@ onMounted(async () => {
 .type-badge.txt      { background: var(--sage-light); color: var(--sage); }
 .type-badge.docx     { background: #e8daef; color: #7b5ea7; }
 .type-badge.html     { background: #fdebd0; color: #b9770e; }
-.status-badge {
-  padding: 3px 12px;
-  border-radius: 12px;
-  font-size: var(--text-xs); font-weight: 600;
-}
+.status-badge { padding: 3px 12px; border-radius: 12px; font-size: var(--text-xs); font-weight: 600; }
 .badge-pending { background: #fef7e0; color: #9d8100; }
 .badge-processing { background: var(--blue-light); color: var(--dusty-blue); }
 .badge-done { background: var(--sage-light); color: var(--sage); }
 .badge-fail { background: var(--rose-light); color: var(--error); }
 .meta-info { color: var(--text-muted); font-size: var(--text-sm); }
 
-/* ── Main ── */
+/* Main */
 .doc-main { max-width: 900px; margin: 0 auto; padding: 32px; }
 
-/* ── Card ── */
+/* Card */
 .card {
   background: var(--surface);
   border-radius: var(--radius-lg);
@@ -167,39 +233,118 @@ onMounted(async () => {
 }
 
 .summary-text { font-size: var(--text-base); line-height: var(--leading); color: var(--text); }
-
 .placeholder { color: var(--text-muted); font-style: italic; font-size: var(--text-sm); }
 
-/* ── Chunks ── */
-.chunk-list { display: flex; flex-direction: column; gap: 16px; }
-.chunk-item {
-  display: flex; gap: 16px;
-  padding: 18px;
-  background: var(--surface-alt);
+/* Retry button */
+.btn-retry {
+  margin-top: 16px;
+  padding: 10px 24px;
+  border: none;
   border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  background: var(--dusty-blue);
+  color: #fff;
+  font-size: var(--text-sm); font-family: var(--font); cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-retry:hover { background: var(--sage); }
+.btn-retry:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* QA */
+.qa-input-row {
+  display: flex; gap: 10px;
+}
+.qa-input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm); font-family: var(--font);
+  background: var(--surface-alt);
+  color: var(--text);
+  outline: none;
   transition: border-color 0.2s;
 }
-.chunk-item:hover { border-color: var(--border); }
-.chunk-num {
-  flex-shrink: 0;
-  width: 32px; height: 32px;
-  border-radius: 50%;
+.qa-input:focus { border-color: var(--sage); }
+.qa-input:disabled { opacity: 0.5; }
+
+.btn-ask {
+  padding: 10px 24px;
+  border: none;
+  border-radius: var(--radius);
   background: var(--sage);
   color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: var(--text-xs); font-weight: 700;
+  font-size: var(--text-sm); font-family: var(--font); cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
 }
-.chunk-text {
-  flex: 1;
-  font-size: var(--text-sm);
-  line-height: var(--leading);
-  color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
+.btn-ask:hover { background: var(--sage-dark); }
+.btn-ask:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.qa-loading {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 18px; padding: 16px;
+  color: var(--text-muted); font-size: var(--text-sm);
+}
+.loader-sm {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--sage);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-/* ── States ── */
+.qa-error {
+  margin-top: 16px; padding: 14px 18px;
+  background: var(--rose-light);
+  border-radius: var(--radius);
+  color: var(--error);
+  font-size: var(--text-sm);
+}
+
+.qa-result {
+  margin-top: 18px;
+}
+.qa-answer {
+  font-size: var(--text-base);
+  line-height: var(--leading);
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.qa-sources {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+.qa-sources summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.source-item {
+  display: flex; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.source-item:last-child { border-bottom: none; }
+.source-tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--sage-light);
+  color: var(--sage);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.source-text {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+/* States */
 .state-box { text-align: center; padding: 80px 20px; }
 .loader {
   width: 28px; height: 28px;
@@ -209,4 +354,5 @@ onMounted(async () => {
   animation: spin 0.8s linear infinite;
   margin: 0 auto 14px;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

@@ -280,6 +280,63 @@ public class RagService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 单文档问答：只检索指定文档的 chunk 来回答问题。
+     */
+    public RagResult askSingleDocument(Long documentId, String question) {
+        List<DocumentChunk> chunks;
+        try {
+            float[] queryEmbedding = embeddingService.embed(question);
+            String vectorStr = embeddingService.toPgVectorString(queryEmbedding);
+            chunks = chunkRepository.findSimilarChunksByDocumentId(vectorStr, documentId, TOP_K);
+        } catch (Exception e) {
+            log.warn("单文档向量搜索失败: {}，使用全部 chunk", e.getMessage());
+            chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(documentId);
+        }
+
+        if (chunks.isEmpty()) {
+            return new RagResult("该文档尚未完成处理，请等待处理完成后重试。", List.of());
+        }
+
+        Document doc = documentRepository.findById(documentId).orElse(null);
+        String docName = doc != null ? doc.getOriginalName() : "未知文档";
+
+        // Build context
+        StringBuilder ctx = new StringBuilder();
+        for (int i = 0; i < chunks.size(); i++) {
+            ctx.append("【段落").append(i + 1).append("】\n")
+               .append(chunks.get(i).getContent()).append("\n\n");
+        }
+
+        List<CitationSource> sources = chunks.stream()
+                .map(c -> new CitationSource(docName,
+                        c.getContent().length() > 200
+                                ? c.getContent().substring(0, 200) + "..."
+                                : c.getContent()))
+                .toList();
+
+        // Call LLM
+        String prompt = """
+                你是一个文档问答助手。请根据以下文档内容回答用户的问题。
+                如果文档中没有相关信息，请明确告知"该文档中未找到相关信息"。
+
+                【文档名称】%s
+
+                【文档内容】
+                %s
+
+                【用户问题】
+                %s
+                """.formatted(docName, ctx.toString(), question);
+
+        Prompt llmPrompt = new Prompt(List.of(
+                new UserMessage(prompt)));
+        ChatResponse response = chatModel.call(llmPrompt);
+        String answer = response.getResult().getOutput().getText();
+
+        return new RagResult(answer, sources);
+    }
+
     public record RenderedPromptWithSources(List<Message> messages, List<CitationSource> sources) {}
 
     public record RagResult(String answer, List<CitationSource> sources) {}

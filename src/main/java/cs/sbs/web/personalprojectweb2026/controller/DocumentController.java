@@ -3,11 +3,13 @@ package cs.sbs.web.personalprojectweb2026.controller;
 import cs.sbs.web.personalprojectweb2026.config.SecurityUtil;
 import cs.sbs.web.personalprojectweb2026.model.entity.Document;
 import cs.sbs.web.personalprojectweb2026.service.DocumentService;
+import cs.sbs.web.personalprojectweb2026.service.RagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -16,6 +18,7 @@ import java.util.Map;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final RagService ragService;
     private final SecurityUtil securityUtil;
 
     @GetMapping("/knowledge-bases/{kbId}/documents")
@@ -62,5 +65,27 @@ public class DocumentController {
         Long userId = securityUtil.getCurrentUser().getId();
         documentService.delete(id, userId);
         return ResponseEntity.ok(Map.of("message", "删除成功"));
+    }
+
+    @PostMapping("/documents/{id}/reprocess")
+    public ResponseEntity<?> reprocess(@PathVariable Long id) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        documentService.reprocess(id, userId);
+        return ResponseEntity.ok(Map.of("message", "已重新加入处理队列"));
+    }
+
+    @PostMapping("/documents/{id}/ask")
+    public ResponseEntity<?> askDocument(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        String question = body.get("question");
+        if (question == null || question.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "请输入问题"));
+        }
+        // Verify access
+        documentService.getById(id, userId);
+        var result = ragService.askSingleDocument(id, question);
+        return ResponseEntity.ok(result);
     }
 }

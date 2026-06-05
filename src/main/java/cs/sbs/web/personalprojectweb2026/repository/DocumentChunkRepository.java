@@ -33,6 +33,21 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
             @Param("limit") int limit);
 
     /**
+     * Cosine similarity search scoped to a single document.
+     */
+    @Query(value = """
+        SELECT dc.*, 1 - (dc.embedding <=> :embedding::vector) AS similarity
+        FROM document_chunks dc
+        WHERE dc.document_id = :docId
+        ORDER BY dc.embedding <=> :embedding::vector
+        LIMIT :limit
+        """, nativeQuery = true)
+    List<DocumentChunk> findSimilarChunksByDocumentId(
+            @Param("embedding") String embeddingStr,
+            @Param("docId") Long docId,
+            @Param("limit") int limit);
+
+    /**
      * Keyword-based search: finds chunks containing any of the given keywords.
      * Uses PostgreSQL ILIKE for case-insensitive matching.
      * @param patterns pre-built ILIKE patterns joined with OR, e.g. "%keyword1% OR content ILIKE %keyword2%"
