@@ -1,6 +1,7 @@
 package cs.sbs.web.personalprojectweb2026.service;
 
 import cs.sbs.web.personalprojectweb2026.model.entity.KnowledgeBase;
+import cs.sbs.web.personalprojectweb2026.repository.DocumentChunkRepository;
 import cs.sbs.web.personalprojectweb2026.repository.DocumentRepository;
 import cs.sbs.web.personalprojectweb2026.repository.KnowledgeBaseRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,11 +27,14 @@ class KnowledgeBaseServiceTest {
     @Mock
     private DocumentRepository documentRepository;
 
+    @Mock
+    private DocumentChunkRepository chunkRepository;
+
     private KnowledgeBaseService kbService;
 
     @BeforeEach
     void setUp() {
-        kbService = new KnowledgeBaseService(kbRepository, documentRepository);
+        kbService = new KnowledgeBaseService(kbRepository, documentRepository, chunkRepository);
     }
 
     @Test
@@ -81,7 +85,7 @@ class KnowledgeBaseServiceTest {
         KnowledgeBase kb = KnowledgeBase.builder().name("别人的知识库").userId(2L).build();
         when(kbRepository.findById(1L)).thenReturn(Optional.of(kb));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> kbService.getById(1L, 1L));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> kbService.getById(1L, 1L));
         assertEquals("无权访问该知识库", ex.getMessage());
     }
 
@@ -89,7 +93,7 @@ class KnowledgeBaseServiceTest {
     void shouldThrowWhenKnowledgeBaseNotFound() {
         when(kbRepository.findById(999L)).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> kbService.getById(999L, 1L));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> kbService.getById(999L, 1L));
         assertEquals("知识库不存在", ex.getMessage());
     }
 
