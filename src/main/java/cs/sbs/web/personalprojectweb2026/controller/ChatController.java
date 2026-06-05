@@ -46,14 +46,13 @@ public class ChatController {
     public ResponseEntity<?> ask(@RequestBody Map<String, Object> body) {
         Long kbId = Long.valueOf(body.get("knowledgeBaseId").toString());
         String question = body.get("question").toString();
-        boolean solverMode = body.get("solverMode") instanceof Boolean b && b;
 
         // Input validation
         validateQuestion(question);
 
         List<ConversationMessage> history = parseHistory(body);
 
-        RagResult result = ragService.ask(kbId, question, history, solverMode);
+        RagResult result = ragService.ask(kbId, question, history);
         return ResponseEntity.ok(Map.of(
                 "answer", result.answer(),
                 "sources", result.sources()
@@ -68,7 +67,6 @@ public class ChatController {
     public SseEmitter stream(@RequestBody Map<String, Object> body) {
         Long kbId = Long.valueOf(body.get("knowledgeBaseId").toString());
         String question = body.get("question").toString();
-        boolean solverMode = body.get("solverMode") instanceof Boolean b && b;
 
         // Input validation
         validateQuestion(question);
@@ -80,7 +78,7 @@ public class ChatController {
         taskExecutor.execute(() -> {
             try {
                 // Single retrieval: get both messages and sources in one call
-                var renderedWithSources = ragService.buildRenderedPrompt(kbId, question, history, solverMode);
+                var renderedWithSources = ragService.buildRenderedPrompt(kbId, question, history);
 
                 // Stream the response
                 Flux<ChatResponse> flux = streamingChatModel.stream(

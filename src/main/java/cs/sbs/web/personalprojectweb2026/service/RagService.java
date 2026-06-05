@@ -33,6 +33,25 @@ public class RagService {
 
     private static final int TOP_K = 5;
 
+    private static final List<String> SOLVER_KEYWORDS = List.of(
+            "答案", "解析", "解题", "答题", "回答", "求解", "计算",
+            "选择", "填空", "判断", "问答", "题目", "试题", "考题",
+            "solve", "answer", "explain", "calculate");
+
+    /**
+     * Auto-detect solver mode: if the question contains problem-solving
+     * keywords, prepend an instruction for step-by-step answer + explanation.
+     */
+    private String maybeSolverPrefix(String question) {
+        String lower = question.toLowerCase();
+        for (String kw : SOLVER_KEYWORDS) {
+            if (lower.contains(kw)) {
+                return "【请给出答案和详细解析】\n" + question;
+            }
+        }
+        return question;
+    }
+
     // Chinese/English stop words and noise characters
     private static final Pattern NOISE = Pattern.compile(
             "[，。！？、；：\"'（）《》【】\\[\\]\\s,.!?;:'\"()\\-_=+@#$%^&*<>/\\\\|~`]+");
@@ -49,7 +68,7 @@ public class RagService {
     /**
      * RAG 问答：检索 → 增强 → 生成。
      */
-    public RagResult ask(Long kbId, String question, List<ConversationMessage> history, boolean solverMode) {
+    public RagResult ask(Long kbId, String question, List<ConversationMessage> history) {
         List<DocumentChunk> chunks = retrieveChunks(kbId, question);
 
         // Batch-load all documents (fixes N+1)
@@ -68,7 +87,7 @@ public class RagService {
         // Render prompt template
         Map<String, String> variables = new LinkedHashMap<>();
         variables.put("context", context);
-        variables.put("question", (solverMode ? "【请给出答案和详细解析】\n" : "") + question);
+        variables.put("question", maybeSolverPrefix(question));
         variables.put("history", historyText);
         RenderedPrompt rendered = promptTemplateService.render("rag-qa", variables);
 
@@ -93,7 +112,7 @@ public class RagService {
      * 构建渲染后的 Prompt + 来源引用，供流式问答使用。
      */
     public RenderedPromptWithSources buildRenderedPrompt(Long kbId, String question,
-                                                          List<ConversationMessage> history, boolean solverMode) {
+                                                          List<ConversationMessage> history) {
         long t0 = System.currentTimeMillis();
 
         List<DocumentChunk> chunks = retrieveChunks(kbId, question);
@@ -113,7 +132,7 @@ public class RagService {
 
         Map<String, String> variables = new LinkedHashMap<>();
         variables.put("context", context);
-        variables.put("question", (solverMode ? "【请给出答案和详细解析】\n" : "") + question);
+        variables.put("question", maybeSolverPrefix(question));
         variables.put("history", historyText);
         var rendered = promptTemplateService.render("rag-qa", variables);
 
