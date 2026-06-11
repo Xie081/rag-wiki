@@ -2,6 +2,14 @@
 
 > 基于 RAG（检索增强生成）技术的智能知识库问答系统——上传文档，用自然语言提问，AI 精准回答。
 
+## 🚀 部署地址
+
+| 服务 | 平台 | 地址 |
+|------|------|------|
+| **前端** | Vercel | [https://rag-wiki.vercel.app](https://rag-wiki.vercel.app) |
+| **后端** | Railway | `https://ragwiki-api-production-c4d2.up.railway.app` |
+| **数据库** | Railway | PostgreSQL 16 + PGVector |
+
 ---
 
 ## 项目简介
@@ -302,17 +310,7 @@ chat_messages
 
 ---
 
-## 部署
-
-### 部署地址
-
-| 服务 | 平台 | 地址 |
-|------|------|------|
-| 前端 | Vercel | [https://rag-wiki.vercel.app](https://rag-wiki.vercel.app) |
-| 后端 | Railway | `https://ragwiki-api-production-c4d2.up.railway.app` |
-| 数据库 | Railway | PostgreSQL 16 + PGVector |
-
-### 环境变量
+## 环境变量
 
 | 变量名 | 说明 |
 |--------|------|
